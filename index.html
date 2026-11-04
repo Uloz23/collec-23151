@@ -329,6 +329,13 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .board-list li.me { border-color: var(--gold); background: rgba(212,178,106,.12); }
 .board-list .bn { font-family: var(--f-gadz); font-size: 19px; color: var(--gold-soft); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .board-list .bs { font-family: var(--f-label); font-size: 15px; color: var(--muted); }
+.board-list li.peek { cursor: pointer; }
+.board-list li.peek:hover, .board-list li.peek:focus-visible { border-color: var(--gold); outline: none; }
+.board-list li.seen { border-color: var(--gold-soft); box-shadow: 0 0 0 1px var(--gold-soft) inset; }
+.board-hint { margin: -4px 0 0; text-align: center; font-family: var(--f-label); font-size: 13px; color: var(--muted); letter-spacing: .04em; }
+.peek-bar { position: sticky; top: 8px; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--gold); background: #2a1f14; box-shadow: 0 6px 18px rgba(0,0,0,.5); }
+.peek-bar span { font-family: var(--f-label); font-size: 15px; color: var(--gold-soft); letter-spacing: .04em; min-width: 0; }
+.peek-bar b { font-family: var(--f-gadz); font-weight: 400; font-size: 19px; }
 
 /* ---------- Offrir (joueurs autorisés par l'admin) ---------- */
 .giver { width: 100%; max-width: 520px; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: rgba(108,96,157,.12); padding: 12px 16px; margin-top: 10px; }
@@ -394,6 +401,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 
   <!-- Page 2 : la collection -->
   <section class="page page-collec" id="page-collec" aria-label="Ma collec'" hidden>
+    <div class="peek-bar" id="peek-bar" hidden><span>Album de <b id="peek-name"></b></span><button class="btn-ghost" id="peek-close" type="button">Revenir à ma collec'</button></div>
     <div class="progress">
       <div class="progress-line"><span id="prog-cards">0 / 0 cartes</span><span id="prog-var">0 variante</span></div>
       <div class="meter"><i id="prog-bar"></i></div>
@@ -403,6 +411,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
     <ul class="legend" aria-label="Raretés" id="legend"></ul>
     <section class="board" aria-labelledby="board-title">
       <h2 class="page-title" id="board-title">Classement de la fam's</h2>
+      <p class="board-hint">Touche un pseudo pour voir son album</p>
       <ol class="board-list" id="board"></ol>
     </section>
   </section>
@@ -503,8 +512,10 @@ function applyState(s) {
   (s.owned || []).forEach(([cid, v, n]) => { state.owned[cid + ":" + v] = n; });
 }
 const total = () => state.stock + state.gifts;
-const ownedCount = id => VORDER.reduce((s, v) => s + (state.owned[id + ":" + v] || 0), 0);
-const ownedVariants = id => VORDER.filter(v => state.owned[id + ":" + v]);
+let peek = null; // album d'un autre joueur, en lecture seule
+const OWN = () => peek ? peek.owned : state.owned;
+const ownedCount = (id, o = OWN()) => VORDER.reduce((s, v) => s + (o[id + ":" + v] || 0), 0);
+const ownedVariants = id => VORDER.filter(v => OWN()[id + ":" + v]);
 
 const ERRORS = {
   pseudo_pris: "Ce pseudo est déjà pris. Si c'est le tien, passe par « J'ai déjà un compte ».",
@@ -515,7 +526,9 @@ const ERRORS = {
   bloque: "Trop d'essais : réessaie dans 5 minutes.",
   pas_de_booster: "Tu n'as plus de booster pour l'instant.",
   pas_autorise: "Tu n'as pas (ou plus) le droit d'offrir des boosters.",
-  session_invalide: "Ta session a expiré : reconnecte-toi."
+  session_invalide: "Ta session a expiré : reconnecte-toi.",
+  joueur_introuvable: "Ce joueur n'existe plus.",
+  player_album: "Il manque la mise à jour n° 2 dans Supabase."
 };
 const errText = e => { const m = String(e && e.message || e); const k = Object.keys(ERRORS).find(k => m.includes(k)); return k ? ERRORS[k] : "Problème de connexion. Vérifie ton réseau et réessaie."; };
 async function rpc(name, args) {
@@ -634,7 +647,7 @@ function renderProgress() {
   $("prog-cards").textContent = `${have} / ${CARDS.length} cartes`;
   $("prog-var").textContent = `${vars} variante${vars > 1 ? "s" : ""} sur ${CARDS.length * 3}`;
   $("prog-bar").style.width = (have / CARDS.length * 100) + "%";
-  $("tab-sub").textContent = `${have} / ${CARDS.length}`;
+  $("tab-sub").textContent = `${CARDS.filter(c => ownedCount(c.id, state.owned) > 0).length} / ${CARDS.length}`;
 }
 function fmtDelay(ms) {
   const s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
@@ -1033,7 +1046,7 @@ function renderViewer() {
   $("v-num").textContent = `${pad(card.id)} / ${pad(CARDS.length)} · ${RLABEL[card.rarity]}`;
   const tabs = $("v-tabs"); tabs.innerHTML = "";
   VORDER.forEach(v => {
-    const n = state.owned[card.id + ":" + v] || 0;
+    const n = OWN()[card.id + ":" + v] || 0;
     const b = document.createElement("button");
     b.type = "button"; b.className = "chip"; b.setAttribute("aria-pressed", String(v === variant));
     b.disabled = !n; if (!n) b.style.opacity = ".35";
@@ -1042,7 +1055,7 @@ function renderViewer() {
     tabs.appendChild(b);
   });
   const total = ownedCount(card.id);
-  $("v-owned").textContent = `Possédée ${total} fois · incline la carte pour voir le reflet`;
+  $("v-owned").textContent = `${peek ? "Il l'a" : "Possédée"} ${total} fois · incline la carte pour voir le reflet`;
   $("v-audio").hidden = !hasAudio(card);
   const remix = audioFor(card, variant) !== audioFor(card, "normale");
   $("v-audio").textContent = remix ? "♪ Écouter le remix" : "♪ Écouter l'extrait";
@@ -1079,10 +1092,26 @@ function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add
 async function renderBoard() {
   try {
     const rows = await rpc("leaderboard", {});
-    $("board").innerHTML = rows.map(r => `<li class="${r.pseudo === state.pseudo ? "me" : ""}"><span class="bn">${esc(r.pseudo)}</span><span class="bs">${r.cartes} / ${CARDS.length}${r.variantes ? ` · ✦ ${r.variantes}` : ""}</span></li>`).join("") || "<li><span class=\"bs\">Personne n'a encore ouvert de booster.</span></li>";
+    $("board").innerHTML = rows.map(r => `<li tabindex="0" role="button" data-pseudo="${esc(r.pseudo)}" class="peek${r.pseudo === state.pseudo ? " me" : ""}${peek && r.pseudo === peek.pseudo ? " seen" : ""}"><span class="bn">${esc(r.pseudo)}</span><span class="bs">${r.cartes} / ${CARDS.length}${r.variantes ? ` · ✦ ${r.variantes}` : ""}</span></li>`).join("") || "<li><span class=\"bs\">Personne n'a encore ouvert de booster.</span></li>";
   } catch (e) {}
 }
-document.querySelector("#tab-collec").addEventListener("click", renderBoard);
+document.querySelector("#tab-collec").addEventListener("click", () => { if (peek) endPeek(); renderBoard(); });
+document.querySelector("#tab-boosters").addEventListener("click", () => { if (peek) endPeek(); });
+function endPeek() { peek = null; $("peek-bar").hidden = true; renderProgress(); renderFilters(); renderAlbum(); renderBoard(); }
+async function startPeek(pseudo) {
+  if (pseudo === state.pseudo) { if (peek) endPeek(); return; }
+  try {
+    const r = await rpc("player_album", { p_token: TOKEN, p_pseudo: pseudo });
+    const owned = {}; (r.owned || []).forEach(([cid, v, n]) => { owned[cid + ":" + v] = n; });
+    peek = { pseudo: r.pseudo, owned };
+    $("peek-name").textContent = r.pseudo; $("peek-bar").hidden = false;
+    renderProgress(); renderFilters(); renderAlbum(); renderBoard();
+    window.scrollTo(0, 0);
+  } catch (e) { toast(errText(e)); }
+}
+$("peek-close").addEventListener("click", endPeek);
+$("board").addEventListener("click", e => { const li = e.target.closest("li[data-pseudo]"); if (li) startPeek(li.dataset.pseudo); });
+$("board").addEventListener("keydown", e => { if (e.key !== "Enter" && e.key !== " ") return; const li = e.target.closest("li[data-pseudo]"); if (li) { e.preventDefault(); startPeek(li.dataset.pseudo); } });
 
 /* ================= Offrir des boosters (droit donné par l'admin) ================= */
 async function loadTargets() {
