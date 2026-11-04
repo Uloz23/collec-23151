@@ -64,9 +64,9 @@ td.num { font-variant-numeric: tabular-nums; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(241,223,174,.15); }
 .dot.on { background: var(--ok); }
 .editor { display: grid; gap: 14px; }
-.media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
-.media { display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--line); border-radius: 12px; }
-.media .cur { border-radius: 8px; background: #0b0707 center / cover no-repeat; border: 1px solid var(--line); }
+.media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: 14px; }
+.media { display: grid; gap: 8px; padding: 12px; min-width: 0; align-content: start; border: 1px dashed var(--line); border-radius: 12px; }
+.media .cur { width: 100%; box-sizing: border-box; justify-self: center; border-radius: 8px; background: #0b0707 center / cover no-repeat; border: 1px solid var(--line); }
 .media .cur.landscape { aspect-ratio: 4 / 3; } .media .cur.portrait { aspect-ratio: 63 / 88; max-width: 200px; }
 .cropper { display: grid; gap: 10px; justify-items: center; }
 .crop-box { position: relative; width: min(100%, 340px); overflow: hidden; border-radius: 8px; border: 2px solid var(--gold); background: #000; touch-action: none; cursor: grab; }
