@@ -337,7 +337,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 <div class="wrap">
   <header class="head">
     <div>
-      <div class="eyebrow">Fam's 23-151 · Édition Week's Fam's 2026</div>
+      <div class="eyebrow">Fam's 23-151</div>
       <h1>Collec' 23-151</h1>
     </div>
     <div class="head-actions">
@@ -352,7 +352,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
     <h2 class="page-title" id="reserve-title">Tes boosters</h2>
     <button class="pack big-pack" id="big-pack" type="button" aria-label="Ouvrir un booster">
       <div class="pack-top"></div>
-      <div class="pack-body"><div class="pack-logo"></div><div class="pack-title">Booster</div><div class="pack-sub">5 cartes<br>Édition 2026</div></div>
+      <div class="pack-body"><div class="pack-logo"></div><div class="pack-title">Booster</div><div class="pack-sub">5 cartes</div></div>
       <span class="pack-count" id="pack-count"></span>
     </button>
     <div class="pips" id="pips"></div>
@@ -546,7 +546,7 @@ function cardEl(card, variant = "normale") {
     <div class="art">${photoOf(card) ? `<img src="${full && photoOf(card).textless ? photoOf(card).textless : photoOf(card).normale}" alt="">` : ART[card.art](u, card.hue)}</div>
     <div class="bar mid"><span class="type">${hasAudio(card) ? "♪ " : ""}${esc(card.type)}${card.sub ? " · " + esc(card.sub) : ""}</span><span class="rarity rl-${card.rarity}" role="img" aria-label="${RLABEL[card.rarity]}"></span></div>
     ${textboxHTML(card)}
-    <div class="numbering"><span>${card.fams ? esc(card.fams) : "23-151"} · ${EDITION}</span><span>${pad(card.id)} / ${pad(CARDS.length)}</span></div>
+    <div class="numbering"><span>${card.fams ? esc(card.fams) : "23-151"}</span><span>${pad(card.id)} / ${pad(CARDS.length)}</span></div>
   </div></div><div class="foil" aria-hidden="true"></div>`;
   return el;
 }
@@ -799,7 +799,7 @@ function showPack() {
   const st = $("ov-stage"); st.innerHTML = "";
   const pk = document.createElement("div");
   pk.className = "pack";
-  pk.innerHTML = `<div class="pack-top"></div><div class="pack-body"><div class="pack-logo"></div><div class="pack-title">Booster</div><div class="pack-sub">5 cartes<br>Édition ${EDITION}</div></div><div class="pack-cut"></div>`;
+  pk.innerHTML = `<div class="pack-top"></div><div class="pack-body"><div class="pack-logo"></div><div class="pack-title">Booster</div><div class="pack-sub">5 cartes</div></div><div class="pack-cut"></div>`;
   // La lumière qui filtre par la découpe prend déjà la couleur de la meilleure carte
   pk.style.setProperty("--glow", GLOW[bestRarity(session.pulls)].c.replace(/[\d.]+\)$/, "1)"));
   st.appendChild(pk);
