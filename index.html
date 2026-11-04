@@ -564,7 +564,7 @@ function textboxHTML(card) {
   return `<div class="textbox"><p>${esc(card.text)}</p></div>`;
 }
 // Fond neutre des Gadz sans photo
-const GADZ_DEFAULT = { normale: "assets/gadz-defaut-normale.jpg", textless: "assets/gadz-defaut-textless.jpg" };
+const GADZ_DEFAULT = { normale: "assets/gadz-defaut-normale.jpg", textless: "assets/gadz-defaut-textless.jpg?v=2" };
 const photoOf = c => c.photo || (c.type === "Gadz" ? GADZ_DEFAULT : null);
 function cardEl(card, variant = "normale") {
   const el = document.createElement("div");
