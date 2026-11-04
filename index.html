@@ -682,7 +682,7 @@ function renderReserve() {
 function renderLegend() {
   $("legend").innerHTML = ["gadz", ...RORDER].map(r => `<li><span class="rarity rl-${r}" aria-hidden="true"></span>${RLABEL[r]}</li>`).join("");
 }
-function renderAll() { renderReserve(); renderProgress(); renderFilters(); renderAlbum(); }
+function renderAll() { renderReserve(); renderProgress(); renderFilters(); renderAlbum(); if (!$("page-collec").hidden) renderBoard(); }
 
 /* ================= Navigation entre les deux pages ================= */
 function showPage(name) {
@@ -692,6 +692,7 @@ function showPage(name) {
   ["boosters", "collec"].forEach(n => { const t = $("tab-" + n); if (n === name) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
   try { if (location.hash !== "#" + name) history.replaceState(null, "", "#" + name); } catch (e) {}
   window.scrollTo(0, 0);
+  if (name === "collec") renderBoard();
 }
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => showPage(t.dataset.page)));
 window.addEventListener("hashchange", () => showPage(location.hash.slice(1)));
@@ -1093,9 +1094,9 @@ async function renderBoard() {
   try {
     const rows = await rpc("leaderboard", {});
     $("board").innerHTML = rows.map(r => `<li tabindex="0" role="button" data-pseudo="${esc(r.pseudo)}" class="peek${r.pseudo === state.pseudo ? " me" : ""}${peek && r.pseudo === peek.pseudo ? " seen" : ""}"><span class="bn">${esc(r.pseudo)}</span><span class="bs">${r.cartes} / ${CARDS.length}${r.variantes ? ` · ✦ ${r.variantes}` : ""}</span></li>`).join("") || "<li><span class=\"bs\">Personne n'a encore ouvert de booster.</span></li>";
-  } catch (e) {}
+  } catch (e) { $("board").innerHTML = `<li><span class="bs">Classement indisponible pour l'instant.</span></li>`; }
 }
-document.querySelector("#tab-collec").addEventListener("click", () => { if (peek) endPeek(); renderBoard(); });
+document.querySelector("#tab-collec").addEventListener("click", () => { if (peek) endPeek(); });
 document.querySelector("#tab-boosters").addEventListener("click", () => { if (peek) endPeek(); });
 function endPeek() { peek = null; $("peek-bar").hidden = true; renderProgress(); renderFilters(); renderAlbum(); renderBoard(); }
 async function startPeek(pseudo) {
