@@ -477,7 +477,7 @@ const saveToken = t => { TOKEN = t; try { t ? localStorage.setItem(TOKEN_KEY, t)
 
 let EDITION = "2026";
 let CARDS = [];
-const TYPES = ["Gadz", "Trad's", "Chant", "Manip'", "Tabagn's"];
+const TYPES = ["Gadz", "Tabagn's", "Chant", "Trad's"];
 const RORDER = ["commune", "peu-commune", "rare", "mythique"];
 // Les Gadz ont leur propre niveau, hors classement : tous à égalité
 const RLABEL = { "gadz": "Gadz", "commune": "Commune", "peu-commune": "Peu commune", "rare": "Rare", "mythique": "Mythique" };
@@ -489,7 +489,7 @@ const score = p => RANK[p.card.rarity] * 10 + (p.card.rarity === "gadz" ? 5 : 0)
 const media = path => !path ? null : /^https?:/.test(path) ? path : `${CFG.url}/storage/v1/object/public/${CFG.bucket}/${path}`;
 // Ordre de l'album : par type, puis les Gadz du plus jeune au plus ancien (selon la prom's), puis par code.
 // Le numéro affiché sur la carte en découle : une carte ajoutée plus tard se range à sa place.
-const TYPE_ORDER = ["Gadz", "Tabagn's", "Chant", "Trad's", "Manip'"];
+const TYPE_ORDER = TYPES;
 const promOf = c => { const s = c.sub || ""; if (s.startsWith(".")) return 1e6; const m = /(\d+)\s*$/.exec(s); return m ? +m[1] : -1; };
 function sortCards(list) {
   const t = c => { const i = TYPE_ORDER.indexOf(c.type); return i < 0 ? 99 : i; };
