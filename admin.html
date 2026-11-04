@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Admin Collec' 23-151</title>
+<link rel="icon" href="assets/rarete-gadz.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+@font-face { font-family: "Zagots"; src: url(assets/zagots.ttf) format("truetype"); font-display: swap; }
+/* Layout : page d'outils, une colonne sur téléphone ; onglets en haut, panneaux empilés */
+:root {
+  --bg: #120d0c; --surface: #1d1412; --surface-2: #2a1d1a; --line: rgba(212,178,106,.22);
+  --gold: #d4b26a; --gold-soft: #f1dfae; --ink: #2a1a14; --text: #efe4cc; --muted: #a8968a;
+  --ok: #7fcf8f; --bad: #ff9b8f; --fams: #6c609d;
+  --f-gadz: "Zagots", Georgia, serif; --f-body: "EB Garamond", Georgia, serif; --f-label: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--f-body); font-size: 17px;
+  padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px));
+  padding-block: max(14px, env(safe-area-inset-top, 0px)) 60px; }
+.wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 18px; }
+h1 { margin: 0; font-family: var(--f-gadz); font-weight: 400; font-size: 32px; color: var(--gold-soft); }
+h2 { margin: 0; font-family: var(--f-label); font-weight: 600; font-size: 16px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+p { margin: 0; }
+.muted { color: var(--muted); font-size: 15px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.btn { border: 1px solid var(--line); background: rgba(241,223,174,.06); border-radius: 9px; padding: 10px 14px; cursor: pointer; font-family: var(--f-label); font-size: 16px; letter-spacing: .05em; color: var(--gold-soft); }
+.btn:hover { border-color: var(--gold); }
+.btn.primary { border: 0; background: linear-gradient(180deg, var(--gold-soft), var(--gold)); color: var(--ink); font-weight: 700; }
+.btn.danger { color: var(--bad); border-color: rgba(255,155,143,.35); }
+.btn:disabled { opacity: .45; cursor: default; }
+input, select, textarea { width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: rgba(241,223,174,.05); }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--gold); }
+label { display: grid; gap: 5px; font-family: var(--f-label); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--gold-soft); outline-offset: 2px; }
+.top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.tab { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 8px 16px; cursor: pointer; font-family: var(--f-label); font-size: 16px; color: var(--muted); }
+.tab[aria-pressed="true"] { background: var(--gold); color: var(--ink); border-color: var(--gold); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.row > label { flex: 1 1 160px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.status { min-height: 22px; font-size: 15px; }
+.status.ok { color: var(--ok); } .status.bad { color: var(--bad); }
+table { width: 100%; border-collapse: collapse; font-size: 16px; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(212,178,106,.12); vertical-align: middle; }
+th { font-family: var(--f-label); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 13px; color: var(--muted); }
+td.num { font-variant-numeric: tabular-nums; }
+.scroll { overflow-x: auto; }
+.pseudo { font-family: var(--f-gadz); font-size: 19px; color: var(--gold-soft); }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
+.ctile { display: grid; gap: 5px; padding: 6px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface-2); cursor: pointer; text-align: left; }
+.ctile:hover { border-color: var(--gold); }
+.ctile .thumb { aspect-ratio: 4 / 3; border-radius: 6px; background: #0b0707 center / cover no-repeat; display: grid; place-items: center; font-family: var(--f-label); color: var(--muted); font-size: 13px; }
+.ctile .cn { font-family: var(--f-gadz); font-size: 15px; color: var(--gold-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctile .cm { font-family: var(--f-label); font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+.ctile.off { opacity: .5; }
+.dots { display: flex; gap: 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(241,223,174,.15); }
+.dot.on { background: var(--ok); }
+.editor { display: grid; gap: 14px; }
+.media-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+.media { display: grid; gap: 8px; padding: 12px; border: 1px dashed var(--line); border-radius: 12px; }
+.media .cur { border-radius: 8px; background: #0b0707 center / cover no-repeat; border: 1px solid var(--line); }
+.media .cur.landscape { aspect-ratio: 4 / 3; } .media .cur.portrait { aspect-ratio: 63 / 88; max-width: 200px; }
+.cropper { display: grid; gap: 10px; justify-items: center; }
+.crop-box { position: relative; width: min(100%, 340px); overflow: hidden; border-radius: 8px; border: 2px solid var(--gold); background: #000; touch-action: none; cursor: grab; }
+.crop-box canvas { display: block; width: 100%; height: 100%; }
+.crop-guides { position: absolute; inset: 0; pointer-events: none; }
+.crop-guides .band { position: absolute; left: 0; right: 0; background: rgba(0,0,0,.45); border-bottom: 1px dashed rgba(241,223,174,.6); }
+.crop-guides .band.b { border-bottom: 0; border-top: 1px dashed rgba(241,223,174,.6); }
+.list { display: grid; gap: 4px; font-size: 15px; max-height: 360px; overflow: auto; }
+.list .ok { color: var(--ok); } .list .bad { color: var(--bad); }
+.check { display: flex; gap: 8px; align-items: center; text-transform: none; letter-spacing: 0; font-family: var(--f-body); font-size: 16px; color: var(--text); }
+.check input { width: auto; }
+.login-box { max-width: 380px; margin: 8vh auto 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Admin Collec' 23-151</h1>
+    <div class="row" id="who-row" hidden><span class="muted" id="who"></span><a class="btn" href="index.html">Voir l'appli</a><button class="btn" id="logout" type="button">Se déconnecter</button></div>
+  </div>
+
+  <!-- Connexion -->
+  <form class="panel login-box" id="login" novalidate>
+    <h2>Connexion admin</h2>
+    <p class="muted">Avec l'e-mail et le mot de passe du compte créé dans Supabase (Authentication → Users).</p>
+    <label for="l-email">E-mail<input id="l-email" type="email" autocomplete="username" required></label>
+    <label for="l-pass">Mot de passe<input id="l-pass" type="password" autocomplete="current-password" required></label>
+    <button class="btn primary" id="l-go" type="submit">Se connecter</button>
+    <p class="status" id="l-status" role="alert"></p>
+  </form>
+
+  <div id="app" hidden>
+    <nav class="tabs" aria-label="Sections">
+      <button class="tab" type="button" data-tab="players" aria-pressed="true">Joueurs</button>
+      <button class="tab" type="button" data-tab="cards" aria-pressed="false">Cartes</button>
+      <button class="tab" type="button" data-tab="import" aria-pressed="false">Import en masse</button>
+      <button class="tab" type="button" data-tab="settings" aria-pressed="false">Réglages</button>
+    </nav>
+
+    <!-- Joueurs -->
+    <section class="panel" id="tab-players" style="margin-top:14px">
+      <div class="top"><h2>Offrir des boosters</h2><button class="btn" id="p-refresh" type="button">Actualiser</button></div>
+      <div class="row">
+        <label for="g-count" style="flex:0 1 110px">Nombre<input id="g-count" type="number" min="1" max="50" value="1"></label>
+        <label for="g-reason">Motif (affiché au joueur)<input id="g-reason" placeholder="Manip' réussie au resto"></label>
+      </div>
+      <div class="row">
+        <button class="btn primary" id="g-selected" type="button">Offrir aux joueurs cochés</button>
+        <button class="btn" id="g-all" type="button">Offrir à tout le monde</button>
+      </div>
+      <p class="status" id="g-status" role="status"></p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th><input type="checkbox" id="p-all" aria-label="Tout cocher"></th><th>Pseudo</th><th>Cartes</th><th>Boosters</th><th>Vu</th><th></th></tr></thead>
+          <tbody id="p-body"><tr><td colspan="6" class="muted">Chargement…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Cartes -->
+    <section class="panel" id="tab-cards" hidden style="margin-top:14px">
+      <div class="top"><h2>Cartes</h2><div class="row"><input id="c-search" placeholder="Chercher une carte…" style="width:200px"><button class="btn primary" id="c-new" type="button">Nouvelle carte</button></div></div>
+      <p class="muted">Pastilles : photo normale, photo pleine carte, son. Touche une carte pour la modifier.</p>
+      <div class="cards" id="c-list"></div>
+    </section>
+
+    <section class="panel editor" id="editor" hidden style="margin-top:14px">
+      <div class="top"><h2 id="e-title">Carte</h2><button class="btn" id="e-close" type="button">Retour à la liste</button></div>
+      <div class="grid2">
+        <label for="e-id">N°<input id="e-id" type="number" min="1"></label>
+        <label for="e-name">Nom<input id="e-name" maxlength="40"></label>
+        <label for="e-type">Type<select id="e-type"><option>Gadz</option><option>Trad's</option><option>Chant</option><option>Manip'</option><option>Tabagn's</option></select></label>
+        <label for="e-rarity">Rareté<select id="e-rarity"><option value="gadz">Gadz</option><option value="commune">Commune</option><option value="peu-commune">Peu commune</option><option value="rare">Rare</option><option value="mythique">Mythique</option></select></label>
+        <label for="e-sub">Promo (Gadz)<input id="e-sub" placeholder="Bo211"></label>
+        <label for="e-fams">Fam's (vide = 23-151)<input id="e-fams"></label>
+      </div>
+      <label for="e-text">Texte (facultatif, 110 caractères max)<textarea id="e-text" rows="2" maxlength="140"></textarea></label>
+      <label class="check"><input type="checkbox" id="e-pub"> Publiée (visible dans l'album et dans les boosters)</label>
+      <div class="row"><button class="btn primary" id="e-save" type="button">Enregistrer</button><button class="btn danger" id="e-del" type="button">Supprimer la carte</button></div>
+      <p class="status" id="e-status" role="status"></p>
+
+      <div class="media-grid">
+        <div class="media">
+          <h2>Photo normale (4:3)</h2>
+          <div class="cur landscape" id="m-normale"></div>
+          <label class="btn" style="text-align:center">Prendre ou choisir une photo<input type="file" accept="image/*" id="f-normale" hidden></label>
+        </div>
+        <div class="media">
+          <h2>Photo pleine carte</h2>
+          <div class="cur portrait" id="m-textless"></div>
+          <label class="btn" style="text-align:center">Prendre ou choisir une photo<input type="file" accept="image/*" id="f-textless" hidden></label>
+        </div>
+        <div class="media">
+          <h2>Sons</h2>
+          <label for="f-a-normale">Version de base<input type="file" accept="audio/*" id="f-a-normale"></label>
+          <label for="f-a-textless">Remix (pleine carte et dorée)<input type="file" accept="audio/*" id="f-a-textless"></label>
+          <p class="muted" id="a-cur"></p>
+        </div>
+      </div>
+      <div class="cropper" id="cropper" hidden>
+        <h2 id="crop-title">Cadrage</h2>
+        <p class="muted">Fais glisser l'image pour la placer, et règle le zoom. Les bandes sombres sont cachées par le nom et le bandeau du bas.</p>
+        <div class="crop-box" id="crop-box"><canvas id="crop-canvas"></canvas><div class="crop-guides" id="crop-guides"></div></div>
+        <label for="crop-zoom" style="width:min(100%,340px)">Zoom<input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="1"></label>
+        <div class="row"><button class="btn primary" id="crop-ok" type="button">Publier cette photo</button><button class="btn" id="crop-cancel" type="button">Annuler</button></div>
+      </div>
+    </section>
+
+    <!-- Import -->
+    <section class="panel" id="tab-import" hidden style="margin-top:14px">
+      <h2>Import en masse</h2>
+      <p class="muted">Sélectionne d'un coup tous les fichiers déjà nommés par numéro de carte : <b>012.jpg</b> (photo normale), <b>012-textless.jpg</b> (pleine carte), <b>012.mp3</b> (son), <b>012-textless.mp3</b> (remix), <b>012-doree.mp3</b>. Les photos sont recadrées au centre si besoin.</p>
+      <label class="btn primary" style="text-align:center;justify-self:start">Choisir les fichiers<input type="file" id="i-files" multiple accept="image/*,audio/*" hidden></label>
+      <div class="list" id="i-log"></div>
+    </section>
+
+    <!-- Réglages -->
+    <section class="panel" id="tab-settings" hidden style="margin-top:14px">
+      <h2>Réglages des boosters</h2>
+      <div class="grid2">
+        <label for="s-cap">Réserve maximum<input id="s-cap" type="number" min="1" max="20"></label>
+        <label for="s-period">Un booster toutes les (min), hors week-end<input id="s-period" type="number" min="5"></label>
+        <label for="s-wperiod">Un booster toutes les (min), pendant le week-end<input id="s-wperiod" type="number" min="1"></label>
+        <label for="s-wstart">Début du week-end<input id="s-wstart" type="datetime-local"></label>
+        <label for="s-wend">Fin du week-end<input id="s-wend" type="datetime-local"></label>
+        <label for="s-god">God pack : 1 booster sur<input id="s-god" type="number" min="1"></label>
+        <label for="s-welcome">Boosters de bienvenue<input id="s-welcome" type="number" min="0" max="10"></label>
+      </div>
+      <details><summary class="muted">Réglages avancés (probabilités, en JSON)</summary><textarea id="s-json" rows="14" style="font-family:ui-monospace,monospace;font-size:13px"></textarea></details>
+      <div class="row"><button class="btn primary" id="s-save" type="button">Enregistrer les réglages</button></div>
+      <p class="status" id="s-status" role="status"></p>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+(() => {
+const CFG = window.COLLEC_CFG;
+const SB = window.supabase.createClient(CFG.url, CFG.key);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const media = p => !p ? null : /^https?:/.test(p) ? p : `${CFG.url}/storage/v1/object/public/${CFG.bucket}/${p}`;
+const say = (el, msg, ok = true) => { el.textContent = msg; el.className = "status " + (ok ? "ok" : "bad"); };
+const pad = n => String(n).padStart(3, "0");
+const when = t => { if (!t) return "–"; const d = (Date.now() - Date.parse(t)) / 60e3; return d < 2 ? "à l'instant" : d < 60 ? `il y a ${Math.round(d)} min` : d < 1440 ? `il y a ${Math.round(d / 60)} h` : `il y a ${Math.round(d / 1440)} j`; };
+
+/* ---------- Connexion ---------- */
+async function start() {
+  const { data: { session } } = await SB.auth.getSession();
+  if (!session) { $("login").hidden = false; $("app").hidden = true; $("who-row").hidden = true; return; }
+  const { data: ok, error } = await SB.rpc("become_first_admin");
+  if (error || !ok) { await SB.auth.signOut(); $("login").hidden = false; say($("l-status"), "Ce compte n'est pas administrateur de la collec'.", false); return; }
+  $("login").hidden = true; $("app").hidden = false; $("who-row").hidden = false; $("who").textContent = session.user.email;
+  loadPlayers(); loadCards(); loadSettings();
+}
+$("login").addEventListener("submit", async e => {
+  e.preventDefault(); $("l-go").disabled = true; say($("l-status"), "Connexion…");
+  const { error } = await SB.auth.signInWithPassword({ email: $("l-email").value.trim(), password: $("l-pass").value });
+  $("l-go").disabled = false;
+  if (error) { say($("l-status"), "E-mail ou mot de passe incorrect.", false); return; }
+  say($("l-status"), ""); start();
+});
+$("logout").onclick = async () => { await SB.auth.signOut(); location.reload(); };
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-pressed", String(x === t)));
+  ["players", "cards", "import", "settings"].forEach(n => $("tab-" + n).hidden = n !== t.dataset.tab);
+  $("editor").hidden = true;
+  if (t.dataset.tab === "players") loadPlayers();
+});
+
+/* ---------- Joueurs ---------- */
+let players = [];
+async function loadPlayers() {
+  const { data, error } = await SB.rpc("admin_players");
+  if (error) { $("p-body").innerHTML = `<tr><td colspan="6" class="status bad">Erreur : ${esc(error.message)}</td></tr>`; return; }
+  players = data;
+  $("p-body").innerHTML = data.length ? data.map(p => `<tr data-id="${p.id}">
+    <td><input type="checkbox" class="p-sel" aria-label="Choisir ${esc(p.pseudo)}"></td>
+    <td class="pseudo">${esc(p.pseudo)}</td><td class="num">${p.cartes}</td><td class="num">${p.stock} + ${p.gifts} offert${p.gifts > 1 ? "s" : ""}</td>
+    <td class="muted">${when(p.last_seen)}</td>
+    <td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn p-pin" type="button">Code</button><button class="btn p-ren" type="button">Renommer</button><button class="btn danger p-del" type="button">Suppr.</button></div></td>
+  </tr>`).join("") : `<tr><td colspan="6" class="muted">Personne ne s'est encore inscrit.</td></tr>`;
+}
+$("p-refresh").onclick = loadPlayers;
+$("p-all").onchange = e => document.querySelectorAll(".p-sel").forEach(c => c.checked = e.target.checked);
+async function gift(ids) {
+  const n = parseInt($("g-count").value, 10) || 1, reason = $("g-reason").value.trim() || "Booster offert";
+  const { data, error } = await SB.rpc("admin_gift", { p_ids: ids, p_count: n, p_reason: reason });
+  if (error) return say($("g-status"), "Erreur : " + error.message, false);
+  say($("g-status"), `${n} booster${n > 1 ? "s" : ""} offert${n > 1 ? "s" : ""} à ${data} joueur${data > 1 ? "s" : ""}.`);
+  loadPlayers();
+}
+$("g-selected").onclick = () => {
+  const ids = [...document.querySelectorAll(".p-sel:checked")].map(c => c.closest("tr").dataset.id);
+  if (!ids.length) return say($("g-status"), "Coche au moins un joueur.", false);
+  gift(ids);
+};
+let allArmed = false;
+$("g-all").onclick = () => {
+  if (!allArmed) { allArmed = true; $("g-all").textContent = "Confirmer : offrir à tout le monde"; setTimeout(() => { allArmed = false; $("g-all").textContent = "Offrir à tout le monde"; }, 4000); return; }
+  allArmed = false; $("g-all").textContent = "Offrir à tout le monde"; gift(null);
+};
+$("p-body").addEventListener("click", async e => {
+  const tr = e.target.closest("tr"); if (!tr || !tr.dataset.id) return;
+  const id = tr.dataset.id, p = players.find(x => x.id === id), cell = tr.lastElementChild;
+  const inline = (label, ph, onOk, type = "text") => {
+    cell.innerHTML = `<div class="row" style="gap:6px;flex-wrap:nowrap"><input class="tmp" type="${type}" placeholder="${ph}" aria-label="${label}" style="width:120px"><button class="btn primary ok" type="button">OK</button><button class="btn no" type="button">✕</button></div>`;
+    const inp = cell.querySelector(".tmp"); inp.focus();
+    cell.querySelector(".no").onclick = loadPlayers;
+    cell.querySelector(".ok").onclick = () => onOk(inp.value.trim());
+  };
+  if (e.target.classList.contains("p-pin")) inline("Nouveau code", "4 chiffres", async v => {
+    if (!/^\d{4}$/.test(v)) return say($("g-status"), "Le code doit faire 4 chiffres.", false);
+    const { error } = await SB.rpc("admin_reset_pin", { p_id: id, p_pin: v });
+    say($("g-status"), error ? "Erreur : " + error.message : `Nouveau code de ${p.pseudo} : ${v}. Transmets-le-lui.`, !error); loadPlayers();
+  });
+  if (e.target.classList.contains("p-ren")) inline("Nouveau pseudo", p.pseudo, async v => {
+    if (v.length < 2) return;
+    const { error } = await SB.rpc("admin_rename", { p_id: id, p_pseudo: v });
+    say($("g-status"), error ? "Erreur : ce pseudo est peut-être déjà pris." : `${p.pseudo} s'appelle maintenant ${v}.`, !error); loadPlayers();
+  });
+  if (e.target.classList.contains("p-del")) {
+    if (e.target.dataset.armed) {
+      const { error } = await SB.rpc("admin_delete_player", { p_id: id });
+      say($("g-status"), error ? "Erreur : " + error.message : `${p.pseudo} et sa collection ont été supprimés.`, !error); loadPlayers();
+    } else { e.target.dataset.armed = "1"; e.target.textContent = "Confirmer ?"; setTimeout(() => { if (e.target.isConnected) { delete e.target.dataset.armed; e.target.textContent = "Suppr."; } }, 4000); }
+  }
+});
+
+/* ---------- Cartes ---------- */
+let cards = [], current = null;
+async function loadCards() {
+  const { data, error } = await SB.from("cards").select("*").order("id");
+  if (error) { $("c-list").innerHTML = `<p class="status bad">Erreur : ${esc(error.message)}</p>`; return; }
+  cards = data; renderCards();
+}
+function renderCards() {
+  const q = $("c-search").value.trim().toLowerCase();
+  $("c-list").innerHTML = cards.filter(c => !q || c.name.toLowerCase().includes(q) || String(c.id) === q).map(c => {
+    const img = media(c.photo_normale || c.photo_textless);
+    return `<button class="ctile${c.published ? "" : " off"}" type="button" data-id="${c.id}">
+      <div class="thumb" style="${img ? `background-image:url('${img}')` : ""}">${img ? "" : "pas de photo"}</div>
+      <span class="cn">${esc(c.name)}</span><span class="cm">${pad(c.id)} · ${esc(c.type)} · ${esc(c.rarity)}${c.published ? "" : " · brouillon"}</span>
+      <span class="dots"><i class="dot${c.photo_normale ? " on" : ""}"></i><i class="dot${c.photo_textless ? " on" : ""}"></i><i class="dot${c.audio_normale ? " on" : ""}"></i></span>
+    </button>`;
+  }).join("");
+}
+$("c-search").oninput = renderCards;
+$("c-list").onclick = e => { const t = e.target.closest(".ctile"); if (t) openEditor(cards.find(c => c.id === +t.dataset.id)); };
+$("c-new").onclick = () => openEditor({ id: Math.max(0, ...cards.map(c => c.id)) + 1, name: "", type: "Trad's", rarity: "commune", sub: "", fams: "", text: "", published: false, _new: true });
+function openEditor(c) {
+  current = c;
+  $("tab-cards").hidden = true; $("editor").hidden = false; $("cropper").hidden = true;
+  $("e-title").textContent = c._new ? "Nouvelle carte" : `Carte ${pad(c.id)}`;
+  $("e-id").value = c.id; $("e-id").disabled = !c._new;
+  $("e-name").value = c.name; $("e-type").value = c.type; $("e-rarity").value = c.rarity;
+  $("e-sub").value = c.sub || ""; $("e-fams").value = c.fams || ""; $("e-text").value = c.text || ""; $("e-pub").checked = !!c.published;
+  $("e-del").hidden = !!c._new; say($("e-status"), "");
+  showMedia(); window.scrollTo(0, 0);
+}
+function showMedia() {
+  const c = current;
+  $("m-normale").style.backgroundImage = c.photo_normale ? `url('${media(c.photo_normale)}')` : "none";
+  $("m-textless").style.backgroundImage = c.photo_textless ? `url('${media(c.photo_textless)}')` : "none";
+  $("a-cur").textContent = [c.audio_normale && "son de base ✓", c.audio_textless && "remix ✓", c.audio_doree && "son dorée ✓"].filter(Boolean).join(" · ") || "Pas encore de son.";
+}
+$("e-close").onclick = () => { $("editor").hidden = true; $("tab-cards").hidden = false; loadCards(); };
+const ART = { "Gadz": "gadz", "Trad's": "trad", "Chant": "chant", "Manip'": "manip", "Tabagn's": "tabagn" };
+$("e-save").onclick = async () => {
+  const row = { id: +$("e-id").value, name: $("e-name").value.trim(), type: $("e-type").value, rarity: $("e-rarity").value,
+    sub: $("e-sub").value.trim() || null, fams: $("e-fams").value.trim() || null, text: $("e-text").value.trim(), published: $("e-pub").checked, updated_at: new Date().toISOString() };
+  if (!row.name) return say($("e-status"), "Donne un nom à la carte.", false);
+  if (row.type === "Gadz" && !row.sub) return say($("e-status"), "Un Gadz a besoin de sa promo (Bo211…).", false);
+  if (current._new) { row.art = ART[row.type] || "trad"; row.hue = Math.floor(Math.random() * 360); }
+  const q = current._new ? SB.from("cards").insert(row).select().single() : SB.from("cards").update(row).eq("id", row.id).select().single();
+  const { data, error } = await q;
+  if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message), false);
+  current = data; $("e-id").disabled = true; $("e-del").hidden = false; $("e-title").textContent = `Carte ${pad(data.id)}`;
+  say($("e-status"), row.published ? "Enregistrée et publiée." : "Enregistrée en brouillon (invisible pour les joueurs).");
+};
+$("e-del").onclick = async () => {
+  const b = $("e-del");
+  if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Confirmer la suppression"; setTimeout(() => { delete b.dataset.armed; b.textContent = "Supprimer la carte"; }, 4000); return; }
+  const { error } = await SB.from("cards").delete().eq("id", current.id);
+  if (error) return say($("e-status"), "Erreur : " + error.message, false);
+  $("e-close").click();
+};
+
+/* ---------- Envoi des fichiers ---------- */
+async function upload(blob, name, type) {
+  const path = `cartes/${name}-${Date.now()}.${type.includes("png") ? "png" : type.includes("jpeg") || type.includes("jpg") ? "jpg" : type.includes("mp4") || type.includes("m4a") ? "m4a" : type.includes("wav") ? "wav" : "mp3"}`;
+  const { error } = await SB.storage.from(CFG.bucket).upload(path, blob, { contentType: type, upsert: false, cacheControl: "31536000" });
+  if (error) throw error;
+  return path;
+}
+async function setCardField(id, field, path) {
+  const { data, error } = await SB.from("cards").update({ [field]: path, updated_at: new Date().toISOString() }).eq("id", id).select().single();
+  if (error) throw error;
+  const i = cards.findIndex(c => c.id === id); if (i >= 0) cards[i] = data;
+  return data;
+}
+const SIZES = { normale: [960, 720], textless: [900, 1257] };
+function loadImage(file) {
+  return new Promise((res, rej) => { const url = URL.createObjectURL(file); const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = url; });
+}
+function renderTo(img, w, h, zoom = 1, cx = .5, cy = .5) {
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  const g = cv.getContext("2d"); const base = Math.max(w / img.width, h / img.height) * zoom;
+  const dw = img.width * base, dh = img.height * base;
+  const x = Math.min(0, Math.max(w - dw, w / 2 - cx * dw)), y = Math.min(0, Math.max(h - dh, h / 2 - cy * dh));
+  g.fillStyle = "#000"; g.fillRect(0, 0, w, h); g.drawImage(img, x, y, dw, dh);
+  return cv;
+}
+const toBlob = cv => new Promise(r => cv.toBlob(r, "image/jpeg", .85));
+
+/* Recadrage au doigt */
+let crop = null;
+async function startCrop(file, variant) {
+  if (!current || current._new) return say($("e-status"), "Enregistre d'abord la carte, puis ajoute la photo.", false);
+  const img = await loadImage(file);
+  const [w, h] = SIZES[variant];
+  crop = { img, variant, w, h, zoom: 1, cx: .5, cy: variant === "textless" ? .45 : .4 };
+  $("crop-title").textContent = variant === "normale" ? "Cadrage de la photo normale" : "Cadrage de la photo pleine carte";
+  const box = $("crop-box"); box.style.aspectRatio = `${w} / ${h}`;
+  $("crop-guides").innerHTML = variant === "textless" ? `<div class="band" style="top:0;height:12%"></div><div class="band b" style="bottom:0;height:15%"></div>` : "";
+  $("crop-zoom").value = 1; $("cropper").hidden = false; drawCrop();
+  $("cropper").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function drawCrop() {
+  const cv = $("crop-canvas"), src = renderTo(crop.img, crop.w / 2, crop.h / 2, crop.zoom, crop.cx, crop.cy);
+  cv.width = src.width; cv.height = src.height; cv.getContext("2d").drawImage(src, 0, 0);
+}
+$("crop-zoom").oninput = e => { crop.zoom = +e.target.value; drawCrop(); };
+(() => {
+  const box = $("crop-box"); let drag = null;
+  box.addEventListener("pointerdown", e => { if (!crop) return; drag = { x: e.clientX, y: e.clientY, cx: crop.cx, cy: crop.cy }; box.setPointerCapture(e.pointerId); });
+  box.addEventListener("pointermove", e => {
+    if (!drag) return; const r = box.getBoundingClientRect();
+    const base = Math.max(crop.w / crop.img.width, crop.h / crop.img.height) * crop.zoom;
+    const scale = (crop.w / r.width) / (crop.img.width * base), scaleY = (crop.h / r.height) / (crop.img.height * base);
+    crop.cx = Math.min(1, Math.max(0, drag.cx - (e.clientX - drag.x) * scale));
+    crop.cy = Math.min(1, Math.max(0, drag.cy - (e.clientY - drag.y) * scaleY)); drawCrop();
+  });
+  ["pointerup", "pointercancel"].forEach(ev => box.addEventListener(ev, () => drag = null));
+})();
+$("crop-cancel").onclick = () => { $("cropper").hidden = true; crop = null; };
+$("crop-ok").onclick = async () => {
+  const b = $("crop-ok"); b.disabled = true; say($("e-status"), "Envoi de la photo…");
+  try {
+    const blob = await toBlob(renderTo(crop.img, crop.w, crop.h, crop.zoom, crop.cx, crop.cy));
+    const path = await upload(blob, `${pad(current.id)}-${crop.variant}`, "image/jpeg");
+    current = await setCardField(current.id, crop.variant === "normale" ? "photo_normale" : "photo_textless", path);
+    showMedia(); $("cropper").hidden = true; crop = null; say($("e-status"), "Photo publiée : elle est déjà visible dans l'appli.");
+  } catch (e) { say($("e-status"), "Erreur d'envoi : " + e.message, false); }
+  b.disabled = false;
+};
+$("f-normale").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) startCrop(f, "normale"); };
+$("f-textless").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) startCrop(f, "textless"); };
+for (const [inp, field, suffix] of [["f-a-normale", "audio_normale", "son"], ["f-a-textless", "audio_textless", "remix"]]) {
+  $(inp).onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    if (!current || current._new) return say($("e-status"), "Enregistre d'abord la carte.", false);
+    say($("e-status"), "Envoi du son…");
+    try { const path = await upload(f, `${pad(current.id)}-${suffix}`, f.type || "audio/mpeg"); current = await setCardField(current.id, field, path); showMedia(); say($("e-status"), "Son publié."); }
+    catch (err) { say($("e-status"), "Erreur d'envoi : " + err.message, false); }
+  };
+}
+
+/* ---------- Import en masse ---------- */
+$("i-files").onchange = async e => {
+  const files = [...e.target.files]; e.target.value = ""; const log = $("i-log"); log.innerHTML = "";
+  const line = (t, ok) => { const d = document.createElement("div"); d.className = ok === undefined ? "" : ok ? "ok" : "bad"; d.textContent = t; log.appendChild(d); return d; };
+  if (!cards.length) await loadCards();
+  let done = 0;
+  for (const f of files) {
+    const m = /^(\d{1,3})(?:[-_ ](textless|doree|dorée|remix|2))?\.(jpe?g|png|webp|heic|mp3|m4a|wav|ogg)$/i.exec(f.name.trim());
+    if (!m) { line(`${f.name} : nom non reconnu, ignoré`, false); continue; }
+    const id = +m[1], kind = (m[2] || "").toLowerCase(), ext = m[3].toLowerCase(), isAudio = /mp3|m4a|wav|ogg/.test(ext);
+    if (!cards.some(c => c.id === id)) { line(`${f.name} : aucune carte n° ${id}`, false); continue; }
+    const variant = kind === "doree" || kind === "dorée" ? "doree" : kind ? "textless" : "normale";
+    const field = isAudio ? (variant === "doree" ? "audio_doree" : variant === "textless" ? "audio_textless" : "audio_normale") : (variant === "textless" ? "photo_textless" : "photo_normale");
+    const l = line(`${f.name} → carte ${pad(id)} (${field.replace("_", " ")})…`);
+    try {
+      let blob = f, type = f.type || (isAudio ? "audio/mpeg" : "image/jpeg");
+      if (!isAudio) { const img = await loadImage(f); const [w, h] = SIZES[variant === "textless" ? "textless" : "normale"]; blob = await toBlob(renderTo(img, w, h)); type = "image/jpeg"; }
+      const path = await upload(blob, `${pad(id)}-${isAudio ? (variant === "normale" ? "son" : "remix") : variant}`, type);
+      await setCardField(id, field, path);
+      l.textContent = `${f.name} → carte ${pad(id)} ✓`; l.className = "ok"; done++;
+    } catch (err) { l.textContent = `${f.name} : erreur (${err.message})`; l.className = "bad"; }
+  }
+  line(`Terminé : ${done} fichier${done > 1 ? "s" : ""} importé${done > 1 ? "s" : ""} sur ${files.length}.`, true);
+  renderCards();
+};
+
+/* ---------- Réglages ---------- */
+let settings = null;
+const toLocal = iso => { const d = new Date(iso); const p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+async function loadSettings() {
+  const { data, error } = await SB.from("settings").select("data").eq("id", 1).single();
+  if (error) return say($("s-status"), "Erreur : " + error.message, false);
+  settings = data.data;
+  $("s-cap").value = settings.cap; $("s-period").value = settings.period_min; $("s-wperiod").value = settings.weekend_period_min;
+  $("s-wstart").value = toLocal(settings.weekend_start); $("s-wend").value = toLocal(settings.weekend_end);
+  $("s-god").value = Math.round(1 / settings.god_rate); $("s-welcome").value = settings.welcome_gifts;
+  $("s-json").value = JSON.stringify({ slots: settings.slots, god_slots: settings.god_slots, variants: settings.variants }, null, 2);
+}
+$("s-save").onclick = async () => {
+  let adv;
+  try { adv = JSON.parse($("s-json").value); } catch (e) { return say($("s-status"), "Les réglages avancés ne sont pas un JSON valide.", false); }
+  const data = { ...settings, ...adv,
+    cap: +$("s-cap").value, period_min: +$("s-period").value, weekend_period_min: +$("s-wperiod").value,
+    weekend_start: new Date($("s-wstart").value).toISOString(), weekend_end: new Date($("s-wend").value).toISOString(),
+    god_rate: 1 / Math.max(1, +$("s-god").value), welcome_gifts: +$("s-welcome").value };
+  const { error } = await SB.from("settings").update({ data }).eq("id", 1);
+  if (error) return say($("s-status"), "Erreur : " + error.message, false);
+  settings = data; say($("s-status"), "Réglages enregistrés. Ils s'appliquent dès le prochain booster.");
+};
+
+start();
+})();
+</script>
+</body>
+</html>
