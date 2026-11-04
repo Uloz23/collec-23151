@@ -329,6 +329,19 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .board-list li.me { border-color: var(--gold); background: rgba(212,178,106,.12); }
 .board-list .bn { font-family: var(--f-gadz); font-size: 19px; color: var(--gold-soft); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .board-list .bs { font-family: var(--f-label); font-size: 15px; color: var(--muted); }
+
+/* ---------- Offrir (joueurs autorisés par l'admin) ---------- */
+.giver { width: 100%; max-width: 520px; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: rgba(108,96,157,.12); padding: 12px 16px; margin-top: 10px; }
+.giver summary { cursor: pointer; font-family: var(--f-label); font-weight: 600; font-size: 16px; letter-spacing: .12em; text-transform: uppercase; color: var(--fams-soft); }
+.giver-body { display: grid; gap: 12px; margin-top: 12px; }
+.giver-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.giver-row label { display: grid; gap: 4px; font-family: var(--f-label); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); width: 90px; }
+.giver-row label.grow { flex: 1 1 180px; width: auto; }
+.giver input[type=number], .giver input:not([type]) { width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: rgba(241,223,174,.06); color: var(--parchment); font-size: 16px; }
+.giver-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; max-height: 260px; overflow: auto; }
+.giver-list label { display: flex; gap: 8px; align-items: center; padding: 8px 10px; border-radius: 9px; background: rgba(241,223,174,.04); cursor: pointer; font-family: var(--f-gadz); font-size: 17px; color: var(--gold-soft); min-width: 0; }
+.giver-list label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.giver-status { margin: 0; min-height: 20px; font-size: 15px; color: var(--fams-soft); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
@@ -360,6 +373,22 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
     <p class="gift" id="gift" hidden></p>
     <button class="btn-primary big" id="open-btn" type="button">Ouvrir un booster</button>
     <p class="rhythm" id="rhythm"></p>
+
+    <details class="giver" id="giver" hidden>
+      <summary>Offrir des boosters</summary>
+      <div class="giver-body">
+        <div class="giver-row">
+          <label for="gv-count">Nombre<input id="gv-count" type="number" min="1" max="20" value="1"></label>
+          <label for="gv-reason" class="grow">Motif<input id="gv-reason" placeholder="Manip' réussie au resto" maxlength="80"></label>
+        </div>
+        <div class="giver-list" id="gv-list"></div>
+        <div class="giver-row">
+          <button class="btn-primary" id="gv-send" type="button">Offrir aux cochés</button>
+          <button class="btn-ghost" id="gv-all" type="button">Offrir à tout le monde</button>
+        </div>
+        <p class="giver-status" id="gv-status" role="status"></p>
+      </div>
+    </details>
 
   </section>
 
@@ -465,9 +494,10 @@ async function loadCards() {
 }
 
 // État du joueur, tel que renvoyé par le serveur
-let state = { pseudo: "", stock: 0, gifts: 0, gift: "", cap: 5, nextAt: null, periodMin: 360, owned: {} };
+let state = { pseudo: "", stock: 0, gifts: 0, gift: "", cap: 5, nextAt: null, periodMin: 360, owned: {}, canGift: false };
 function applyState(s) {
   state.pseudo = s.pseudo; state.stock = s.stock; state.gifts = s.gifts; state.gift = s.gift_reason || "";
+  state.canGift = !!s.can_gift;
   state.cap = s.cap; state.nextAt = s.next_at ? Date.parse(s.next_at) : null; state.periodMin = s.period_min;
   state.owned = {};
   (s.owned || []).forEach(([cid, v, n]) => { state.owned[cid + ":" + v] = n; });
@@ -484,6 +514,7 @@ const ERRORS = {
   mauvais_code: "Code incorrect. Au bout de 5 essais, le compte est bloqué 5 minutes.",
   bloque: "Trop d'essais : réessaie dans 5 minutes.",
   pas_de_booster: "Tu n'as plus de booster pour l'instant.",
+  pas_autorise: "Tu n'as pas (ou plus) le droit d'offrir des boosters.",
   session_invalide: "Ta session a expiré : reconnecte-toi."
 };
 const errText = e => { const m = String(e && e.message || e); const k = Object.keys(ERRORS).find(k => m.includes(k)); return k ? ERRORS[k] : "Problème de connexion. Vérifie ton réseau et réessaie."; };
@@ -633,6 +664,7 @@ function renderReserve() {
   $("pack-count").textContent = total() > 0 ? "×" + total() : "";
   const tb = $("tab-badge"); tb.hidden = total() < 1; tb.textContent = total();
   $("who").textContent = state.pseudo;
+  $("giver").hidden = !state.canGift;
 }
 function renderLegend() {
   $("legend").innerHTML = ["gadz", ...RORDER].map(r => `<li><span class="rarity rl-${r}" aria-hidden="true"></span>${RLABEL[r]}</li>`).join("");
@@ -1051,6 +1083,33 @@ async function renderBoard() {
   } catch (e) {}
 }
 document.querySelector("#tab-collec").addEventListener("click", renderBoard);
+
+/* ================= Offrir des boosters (droit donné par l'admin) ================= */
+async function loadTargets() {
+  try {
+    const rows = await rpc("gift_targets", { p_token: TOKEN });
+    $("gv-list").innerHTML = rows.length ? rows.map(r => `<label><input type="checkbox" value="${r.id}"><span>${esc(r.pseudo)}</span></label>`).join("") : `<p class="giver-status">Personne d'autre n'est encore inscrit.</p>`;
+  } catch (e) { $("gv-status").textContent = errText(e); }
+}
+$("giver").addEventListener("toggle", () => { if ($("giver").open) loadTargets(); });
+async function giveTo(ids) {
+  const n = parseInt($("gv-count").value, 10) || 1, reason = $("gv-reason").value.trim() || "Booster offert";
+  try {
+    const served = await rpc("gift_as_player", { p_token: TOKEN, p_ids: ids, p_count: n, p_reason: reason });
+    $("gv-status").textContent = `${n} booster${n > 1 ? "s" : ""} offert${n > 1 ? "s" : ""} à ${served} joueur${served > 1 ? "s" : ""}.`;
+    document.querySelectorAll("#gv-list input:checked").forEach(c => c.checked = false);
+  } catch (e) { $("gv-status").textContent = errText(e); }
+}
+$("gv-send").onclick = () => {
+  const ids = [...document.querySelectorAll("#gv-list input:checked")].map(c => c.value);
+  if (!ids.length) { $("gv-status").textContent = "Coche au moins un joueur."; return; }
+  giveTo(ids);
+};
+let gvArmed = false;
+$("gv-all").onclick = () => {
+  if (!gvArmed) { gvArmed = true; $("gv-all").textContent = "Confirmer : à tout le monde"; setTimeout(() => { gvArmed = false; $("gv-all").textContent = "Offrir à tout le monde"; }, 4000); return; }
+  gvArmed = false; $("gv-all").textContent = "Offrir à tout le monde"; giveTo(null);
+};
 
 /* ================= Connexion ================= */
 let mode = "new";
