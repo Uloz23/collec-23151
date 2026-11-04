@@ -136,7 +136,7 @@ td.num { font-variant-numeric: tabular-nums; }
     <section class="panel editor" id="editor" hidden style="margin-top:14px">
       <div class="top"><h2 id="e-title">Carte</h2><button class="btn" id="e-close" type="button">Retour à la liste</button></div>
       <div class="grid2">
-        <label for="e-id">N°<input id="e-id" type="number" min="1"></label>
+        <label for="e-id">Code (pour les fichiers)<input id="e-id" type="number" min="1"></label>
         <label for="e-name">Nom<input id="e-name" maxlength="40"></label>
         <label for="e-type">Type<select id="e-type"><option>Gadz</option><option>Trad's</option><option>Chant</option><option>Manip'</option><option>Tabagn's</option></select></label>
         <label for="e-rarity">Rareté<select id="e-rarity"><option value="gadz">Gadz</option><option value="commune">Commune</option><option value="peu-commune">Peu commune</option><option value="rare">Rare</option><option value="mythique">Mythique</option></select></label>
@@ -178,7 +178,7 @@ td.num { font-variant-numeric: tabular-nums; }
     <!-- Import -->
     <section class="panel" id="tab-import" hidden style="margin-top:14px">
       <h2>Import en masse</h2>
-      <p class="muted">Sélectionne d'un coup tous les fichiers déjà nommés par numéro de carte : <b>012.jpg</b> (photo normale), <b>012-textless.jpg</b> (pleine carte), <b>012.mp3</b> (son), <b>012-textless.mp3</b> (remix), <b>012-doree.mp3</b>. Les photos sont recadrées au centre si besoin.</p>
+      <p class="muted">Sélectionne d'un coup tous les fichiers nommés par le <b>code</b> de la carte (affiché dans l'onglet Cartes) : <b>012.jpg</b> (photo normale), <b>012-textless.jpg</b> (pleine carte), <b>012.mp3</b> (son), <b>012-textless.mp3</b> (remix), <b>012-doree.mp3</b>. Les photos sont recadrées au centre si besoin.</p>
       <label class="btn primary" style="text-align:center;justify-self:start">Choisir les fichiers<input type="file" id="i-files" multiple accept="image/*,audio/*" hidden></label>
       <div class="list" id="i-log"></div>
     </section>
@@ -307,19 +307,29 @@ $("p-body").addEventListener("click", async e => {
 });
 
 /* ---------- Cartes ---------- */
+// Ordre de l'album : par type, puis les Gadz du plus jeune au plus ancien (selon la prom's), puis par code.
+// Le numéro affiché sur la carte en découle : une carte ajoutée plus tard se range à sa place.
+const TYPE_ORDER = ["Gadz", "Tabagn's", "Chant", "Trad's", "Manip'"];
+const promOf = c => { const s = c.sub || ""; if (s.startsWith(".")) return 1e6; const m = /(\d+)\s*$/.exec(s); return m ? +m[1] : -1; };
+function sortCards(list) {
+  const t = c => { const i = TYPE_ORDER.indexOf(c.type); return i < 0 ? 99 : i; };
+  return list.slice().sort((a, b) => t(a) - t(b) || (a.type === "Gadz" ? promOf(b) - promOf(a) : 0) || a.id - b.id);
+}
 let cards = [], current = null;
 async function loadCards() {
   const { data, error } = await SB.from("cards").select("*").order("id");
   if (error) { $("c-list").innerHTML = `<p class="status bad">Erreur : ${esc(error.message)}</p>`; return; }
   cards = data; renderCards();
+
 }
 function renderCards() {
   const q = $("c-search").value.trim().toLowerCase();
+  cards = sortCards(cards); const nums = {}; cards.filter(c => c.published).forEach((c, i) => { nums[c.id] = i + 1; });
   $("c-list").innerHTML = cards.filter(c => !q || c.name.toLowerCase().includes(q) || String(c.id) === q).map(c => {
     const img = media(c.photo_normale || c.photo_textless);
     return `<button class="ctile${c.published ? "" : " off"}" type="button" data-id="${c.id}">
       <div class="thumb" style="${img ? `background-image:url('${img}')` : ""}">${img ? "" : "pas de photo"}</div>
-      <span class="cn">${esc(c.name)}</span><span class="cm">${pad(c.id)} · ${esc(c.type)} · ${esc(c.rarity)}${c.published ? "" : " · brouillon"}</span>
+      <span class="cn">${esc(c.name)}</span><span class="cm">${nums[c.id] ? "n° " + pad(nums[c.id]) : "—"} · code ${pad(c.id)} · ${esc(c.type)} · ${esc(c.rarity)}${c.published ? "" : " · brouillon"}</span>
       <span class="dots"><i class="dot${c.photo_normale ? " on" : ""}"></i><i class="dot${c.photo_textless ? " on" : ""}"></i><i class="dot${c.audio_normale ? " on" : ""}"></i></span>
     </button>`;
   }).join("");
@@ -330,7 +340,7 @@ $("c-new").onclick = () => openEditor({ id: Math.max(0, ...cards.map(c => c.id))
 function openEditor(c) {
   current = c;
   $("tab-cards").hidden = true; $("editor").hidden = false; $("cropper").hidden = true;
-  $("e-title").textContent = c._new ? "Nouvelle carte" : `Carte ${pad(c.id)}`;
+  $("e-title").textContent = c._new ? "Nouvelle carte" : `Carte « ${c.name} » · code ${pad(c.id)}`;
   $("e-id").value = c.id; $("e-id").disabled = !c._new;
   $("e-name").value = c.name; $("e-type").value = c.type; $("e-rarity").value = c.rarity;
   $("e-sub").value = c.sub || ""; $("e-fams").value = c.fams || ""; $("e-text").value = c.text || ""; $("e-pub").checked = !!c.published;
@@ -354,7 +364,7 @@ $("e-save").onclick = async () => {
   const q = current._new ? SB.from("cards").insert(row).select().single() : SB.from("cards").update(row).eq("id", row.id).select().single();
   const { data, error } = await q;
   if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message), false);
-  current = data; $("e-id").disabled = true; $("e-del").hidden = false; $("e-title").textContent = `Carte ${pad(data.id)}`;
+  current = data; $("e-id").disabled = true; $("e-del").hidden = false; $("e-title").textContent = `Carte « ${data.name} » · code ${pad(data.id)}`;
   say($("e-status"), row.published ? "Enregistrée et publiée." : "Enregistrée en brouillon (invisible pour les joueurs).");
 };
 $("e-del").onclick = async () => {
