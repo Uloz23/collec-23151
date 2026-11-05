@@ -142,7 +142,8 @@ td.num { font-variant-numeric: tabular-nums; }
         <label for="e-name">Nom<input id="e-name" maxlength="40"></label>
         <label for="e-type">Type<select id="e-type"><option>Gadz</option><option>Tabagn's</option><option>Chant</option><option>Trad's</option></select></label>
         <label for="e-rarity">Rareté<select id="e-rarity"><option value="gadz">Gadz</option><option value="commune">Commune</option><option value="peu-commune">Peu commune</option><option value="rare">Rare</option><option value="mythique">Mythique</option></select></label>
-        <label for="e-sub">Promo (Gadz)<input id="e-sub" placeholder="Bo211"></label>
+        <label for="e-sub">Promo (Gadz, ou celle de son gadz pour un proche)<input id="e-sub" placeholder="Bo211"></label>
+        <label for="e-kind">Proche d'un gadz (vide pour un gadz)<input id="e-kind" list="kinds" placeholder="Za, Zon, Pote…" maxlength="20"><datalist id="kinds"><option value="Za"><option value="Zon"><option value="Pote"><option value="Enfant"></datalist></label>
         <label for="e-fams">Fam's (vide = 23-151)<input id="e-fams"></label>
       </div>
       <label for="e-text">Texte (facultatif, 110 caractères max)<textarea id="e-text" rows="2" maxlength="140"></textarea></label>
@@ -330,7 +331,7 @@ const TYPE_ORDER = ["Gadz", "Tabagn's", "Chant", "Trad's"];
 const promOf = c => { const s = c.sub || ""; if (s.startsWith(".")) return 1e6; const m = /(\d+)\s*$/.exec(s); return m ? +m[1] : -1; };
 function sortCards(list) {
   const t = c => { const i = TYPE_ORDER.indexOf(c.type); return i < 0 ? 99 : i; };
-  return list.slice().sort((a, b) => t(a) - t(b) || (a.type === "Gadz" ? promOf(b) - promOf(a) : 0) || a.id - b.id);
+  return list.slice().sort((a, b) => t(a) - t(b) || (a.type === "Gadz" ? promOf(b) - promOf(a) || (a.kind ? 1 : 0) - (b.kind ? 1 : 0) : 0) || a.id - b.id);
 }
 let cards = [], current = null;
 async function loadCards() {
@@ -347,7 +348,7 @@ function renderCards() {
     const img = media(c.photo_normale || c.photo_textless);
     return `<button class="ctile${c.published ? "" : " off"}" type="button" data-id="${c.id}">
       <div class="thumb" style="${img ? `background-image:url('${img}')` : ""}">${img ? "" : "pas de photo"}</div>
-      <span class="cn">${esc(c.name)}</span><span class="cm">${nums[c.id] ? "n° " + pad(nums[c.id]) : "—"} · code ${pad(c.id)} · ${esc(c.type)} · ${esc(c.rarity)}${c.published ? "" : " · brouillon"}</span>
+      <span class="cn">${esc(c.name)}</span><span class="cm">${nums[c.id] ? "n° " + pad(nums[c.id]) : "—"} · code ${pad(c.id)} · ${esc(c.type)}${c.kind ? " – " + esc(c.kind) : ""} · ${esc(c.rarity)}${c.published ? "" : " · brouillon"}</span>
       <span class="dots"><i class="dot${c.photo_normale ? " on" : ""}"></i><i class="dot${c.photo_textless ? " on" : ""}"></i><i class="dot${c.audio_normale ? " on" : ""}"></i></span>
     </button>`;
   }).join("");
@@ -361,7 +362,7 @@ function openEditor(c) {
   $("e-title").textContent = c._new ? "Nouvelle carte" : `Carte « ${c.name} » · code ${pad(c.id)}`;
   $("e-id").value = c.id; $("e-id").disabled = !c._new;
   $("e-name").value = c.name; $("e-type").value = c.type; $("e-rarity").value = c.rarity;
-  $("e-sub").value = c.sub || ""; $("e-fams").value = c.fams || ""; $("e-text").value = c.text || ""; $("e-pub").checked = !!c.published;
+  $("e-sub").value = c.sub || ""; $("e-kind").value = c.kind || ""; $("e-fams").value = c.fams || ""; $("e-text").value = c.text || ""; $("e-pub").checked = !!c.published;
   $("e-del").hidden = !!c._new; say($("e-status"), "");
   showMedia(); window.scrollTo(0, 0);
 }
@@ -370,7 +371,7 @@ let NUMS = {}, NTOTAL = 0, previewT = null, cropShot = null;
 function sendPreview() {
   const fr = $("e-preview"); if (!current || !fr || !fr.contentWindow) return;
   const card = { ...current, id: +$("e-id").value || current.id, name: $("e-name").value.trim() || "Sans nom", type: $("e-type").value, rarity: $("e-rarity").value,
-    sub: $("e-sub").value.trim(), fams: $("e-fams").value.trim(), text: $("e-text").value.trim(), art: current.art || ART[$("e-type").value] || "trad", hue: current.hue ?? 30 };
+    sub: $("e-sub").value.trim(), kind: $("e-kind").value.trim(), fams: $("e-fams").value.trim(), text: $("e-text").value.trim(), art: current.art || ART[$("e-type").value] || "trad", hue: current.hue ?? 30 };
   if (cropShot) { if (cropShot.variant === "normale") card.photo_normale = cropShot.url; else card.photo_textless = cropShot.url; }
   fr.contentWindow.postMessage({ type: "apercu", card, num: NUMS[current.id] || card.id, total: Math.max(NTOTAL, 1) }, location.origin);
 }
@@ -380,7 +381,7 @@ window.addEventListener("message", e => {
   if (e.data.type === "apercu-pret") sendPreview();
   if (e.data.type === "apercu-taille") $("e-preview").style.height = Math.min(Math.max(e.data.h, 200), 1400) + "px";
 });
-["e-name", "e-type", "e-rarity", "e-sub", "e-fams", "e-text", "e-id"].forEach(id => $(id).addEventListener("input", queuePreview));
+["e-name", "e-type", "e-rarity", "e-sub", "e-kind", "e-fams", "e-text", "e-id"].forEach(id => $(id).addEventListener("input", queuePreview));
 function showMedia() {
   queuePreview();
   const c = current;
@@ -392,13 +393,13 @@ $("e-close").onclick = () => { $("editor").hidden = true; $("tab-cards").hidden 
 const ART = { "Gadz": "gadz", "Trad's": "trad", "Chant": "chant", "Manip'": "manip", "Tabagn's": "tabagn" };
 $("e-save").onclick = async () => {
   const row = { id: +$("e-id").value, name: $("e-name").value.trim(), type: $("e-type").value, rarity: $("e-rarity").value,
-    sub: $("e-sub").value.trim() || null, fams: $("e-fams").value.trim() || null, text: $("e-text").value.trim(), published: $("e-pub").checked, updated_at: new Date().toISOString() };
+    sub: $("e-sub").value.trim() || null, kind: $("e-type").value === "Gadz" ? ($("e-kind").value.trim() || null) : null, fams: $("e-fams").value.trim() || null, text: $("e-text").value.trim(), published: $("e-pub").checked, updated_at: new Date().toISOString() };
   if (!row.name) return say($("e-status"), "Donne un nom à la carte.", false);
   if (row.type === "Gadz" && !row.sub) return say($("e-status"), "Un Gadz a besoin de sa promo (Bo211…).", false);
   if (current._new) { row.art = ART[row.type] || "trad"; row.hue = Math.floor(Math.random() * 360); }
   const q = current._new ? SB.from("cards").insert(row).select().single() : SB.from("cards").update(row).eq("id", row.id).select().single();
   const { data, error } = await q;
-  if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message), false);
+  if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message.includes("kind") ? "il manque la mise à jour n° 4 dans Supabase." : error.message), false);
   current = data; $("e-id").disabled = true; $("e-del").hidden = false; $("e-title").textContent = `Carte « ${data.name} » · code ${pad(data.id)}`;
   say($("e-status"), row.published ? "Enregistrée et publiée." : "Enregistrée en brouillon (invisible pour les joueurs).");
 };
