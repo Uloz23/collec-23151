@@ -122,8 +122,8 @@ td.num { font-variant-numeric: tabular-nums; }
       <p class="status" id="g-status" role="status"></p>
       <div class="scroll">
         <table>
-          <thead><tr><th><input type="checkbox" id="p-all" aria-label="Tout cocher"></th><th>Pseudo</th><th>Cartes</th><th>Boosters</th><th>Vu</th><th>Peut offrir</th><th></th></tr></thead>
-          <tbody id="p-body"><tr><td colspan="6" class="muted">Chargement…</td></tr></tbody>
+          <thead><tr><th><input type="checkbox" id="p-all" aria-label="Tout cocher"></th><th>Pseudo</th><th>Cartes</th><th>Boosters</th><th>Vu</th><th>Peut offrir</th><th>Test</th><th></th></tr></thead>
+          <tbody id="p-body"><tr><td colspan="8" class="muted">Chargement…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -257,8 +257,9 @@ async function loadPlayers() {
     <td class="pseudo">${esc(p.pseudo)}</td><td class="num">${p.cartes}</td><td class="num">${p.stock} + ${p.gifts} offert${p.gifts > 1 ? "s" : ""}</td>
     <td class="muted">${when(p.last_seen)}</td>
     <td><input type="checkbox" class="p-gifter" ${p.can_gift ? "checked" : ""} aria-label="${esc(p.pseudo)} peut offrir des boosters"></td>
+    <td><input type="checkbox" class="p-test" ${p.is_test ? "checked" : ""} aria-label="${esc(p.pseudo)} est un compte test"></td>
     <td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn p-pin" type="button">Code</button><button class="btn p-ren" type="button">Renommer</button><button class="btn danger p-del" type="button">Suppr.</button></div></td>
-  </tr>`).join("") : `<tr><td colspan="7" class="muted">Personne ne s'est encore inscrit.</td></tr>`;
+  </tr>`).join("") : `<tr><td colspan="8" class="muted">Personne ne s'est encore inscrit.</td></tr>`;
 }
 $("p-refresh").onclick = loadPlayers;
 $("p-all").onchange = e => document.querySelectorAll(".p-sel").forEach(c => c.checked = e.target.checked);
@@ -279,6 +280,15 @@ $("g-all").onclick = () => {
   if (!allArmed) { allArmed = true; $("g-all").textContent = "Confirmer : offrir à tout le monde"; setTimeout(() => { allArmed = false; $("g-all").textContent = "Offrir à tout le monde"; }, 4000); return; }
   allArmed = false; $("g-all").textContent = "Offrir à tout le monde"; gift(null);
 };
+$("p-body").addEventListener("change", async e => {
+  if (!e.target.classList.contains("p-test")) return;
+  const tr = e.target.closest("tr"), p = players.find(x => x.id === tr.dataset.id);
+  const { error } = await SB.rpc("admin_set_test", { p_id: p.id, p_on: e.target.checked });
+  say($("g-status"), error ? "Erreur : " + error.message + " (as-tu installé la mise à jour n° 3 ?)" : e.target.checked
+    ? `${p.pseudo} est un compte test : tout débloqué, boosters illimités, invisible pour les autres.`
+    : `${p.pseudo} redevient un joueur normal (il retrouve ses vraies cartes).`, !error);
+  if (error) e.target.checked = !e.target.checked; else loadPlayers();
+});
 $("p-body").addEventListener("change", async e => {
   if (!e.target.classList.contains("p-gifter")) return;
   const tr = e.target.closest("tr"), p = players.find(x => x.id === tr.dataset.id);

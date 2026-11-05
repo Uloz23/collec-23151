@@ -525,7 +525,7 @@ function mapCard(c) {
 let state = { pseudo: "", stock: 0, gifts: 0, gift: "", cap: 5, nextAt: null, periodMin: 360, owned: {}, canGift: false };
 function applyState(s) {
   state.pseudo = s.pseudo; state.stock = s.stock; state.gifts = s.gifts; state.gift = s.gift_reason || "";
-  state.canGift = !!s.can_gift;
+  state.canGift = !!s.can_gift; state.isTest = !!s.is_test;
   state.cap = s.cap; state.nextAt = s.next_at ? Date.parse(s.next_at) : null; state.periodMin = s.period_min;
   state.owned = {};
   (s.owned || []).forEach(([cid, v, n]) => { state.owned[cid + ":" + v] = n; });
@@ -695,7 +695,7 @@ function renderReserve() {
   $("big-pack").disabled = total() < 1 || opening;
   $("pack-count").textContent = total() > 0 ? "×" + total() : "";
   const tb = $("tab-badge"); tb.hidden = total() < 1; tb.textContent = total();
-  $("who").textContent = state.pseudo;
+  $("who").textContent = state.pseudo + (state.isTest ? " · compte test" : "");
   $("giver").hidden = !state.canGift;
 }
 function renderLegend() {
