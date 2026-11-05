@@ -602,7 +602,7 @@ function textSize(t) {
 }
 function textboxHTML(card) {
   const gadz = card.type === "Gadz" && !card.kind; // un proche (Za, Zon…) n'a pas de Pn
-  if (!gadz && !card.text) return "";
+  if (!gadz && !card.text) return `<div class="textbox empty"></div>`; // cadre vide : distingue la normale de la textless
   const p = gadz ? pOf(card) : null;
   const sz = card.text ? textSize(card.text) : "";
   if (p) return `<div class="textbox gadz ${sz}"><div class="pn">${p === 1 ? ".onscrit" : p === 2 ? "Ancien" : "P" + p}</div>${card.text ? `<p class="pn-sub">${esc(card.text)}</p>` : ""}</div>`;
@@ -615,7 +615,7 @@ function cardEl(card, variant = "normale") {
   const el = document.createElement("div");
   // Les dorées sont aussi en pleine carte (mise en page textless + cadre or)
   const full = variant === "textless" || variant === "doree";
-  el.className = `card r-${card.rarity} v-${variant}${variant === "doree" ? " v-textless" : ""}${(card.type !== "Gadz" || card.kind) && !card.text ? " notext" : ""}`;
+  el.className = `card r-${card.rarity} v-${variant}${variant === "doree" ? " v-textless" : ""}`;
   const u = ++uidc;
   el.innerHTML = `<div class="card-in"><div class="frame">
     <div class="bar top"><span class="name${card.name.length > 15 ? " long" : ""}">${esc(card.name)}</span></div>
