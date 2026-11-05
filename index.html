@@ -352,6 +352,13 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+/* Aperçu pour l'admin (index.html?apercu, affiché dans un cadre) */
+html.apercu body { min-height: 0; padding: 12px; background: #120d0a; }
+html.apercu body > :not(#apercu):not(script) { display: none !important; }
+#apercu { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; max-width: 760px; margin: 0 auto; }
+#apercu figure { margin: 0; display: grid; gap: 6px; }
+#apercu figcaption { text-align: center; font-family: var(--f-label); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+#apercu .empty { grid-column: 1 / -1; text-align: center; color: var(--muted); font-family: var(--f-label); }
 </style>
 
 <div class="wrap">
@@ -486,7 +493,7 @@ const VORDER = ["normale", "brillante", "textless", "doree"];
 const VLABEL = { normale: "Normale", brillante: "Brillante", textless: "Textless", doree: "Dorée" };
 const score = p => RANK[p.card.rarity] * 10 + (p.card.rarity === "gadz" ? 5 : 0) + VORDER.indexOf(p.variant) * 12;
 
-const media = path => !path ? null : /^https?:/.test(path) ? path : `${CFG.url}/storage/v1/object/public/${CFG.bucket}/${path}`;
+const media = path => !path ? null : /^(https?|data|blob):/.test(path) ? path : `${CFG.url}/storage/v1/object/public/${CFG.bucket}/${path}`;
 // Ordre de l'album : par type, puis les Gadz du plus jeune au plus ancien (selon la prom's), puis par code.
 // Le numéro affiché sur la carte en découle : une carte ajoutée plus tard se range à sa place.
 const TYPE_ORDER = TYPES;
@@ -502,13 +509,16 @@ async function loadCards() {
   ]);
   if (error) throw error;
   if (st && st.data && st.data.edition) EDITION = st.data.edition;
-  CARDS = cards.map(c => ({
+  CARDS = cards.map(mapCard);
+  CARDS = sortCards(CARDS); CARDS.forEach((c, i) => { c.num = i + 1; });
+}
+function mapCard(c) {
+  return ({
     id: c.id, name: c.name, type: c.type, sub: c.sub || "", fams: c.fams || "", rarity: c.rarity,
     art: c.art || "trad", hue: c.hue ?? 30, text: c.text || "",
     photo: (c.photo_normale || c.photo_textless) ? { normale: media(c.photo_normale || c.photo_textless), textless: media(c.photo_textless || c.photo_normale) } : null,
     audio: (c.audio_normale || c.audio_textless || c.audio_doree) ? { normale: media(c.audio_normale || c.audio_textless), textless: media(c.audio_textless), doree: media(c.audio_doree) } : null
-  }));
-  CARDS = sortCards(CARDS); CARDS.forEach((c, i) => { c.num = i + 1; });
+  });
 }
 
 // État du joueur, tel que renvoyé par le serveur
@@ -1192,6 +1202,26 @@ $("logout-btn").onclick = () => { saveToken(null); state.owned = {}; renderAll()
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshState(); });
 
 /* ================= Démarrage ================= */
+if (/[?&]apercu/.test(location.search)) {
+  // Mode aperçu : l'admin envoie la carte en cours de modification, on la dessine dans ses 4 versions
+  document.documentElement.classList.add("apercu");
+  const box = document.createElement("div"); box.id = "apercu"; box.innerHTML = `<p class="empty">Aperçu en attente…</p>`;
+  document.body.appendChild(box);
+  window.addEventListener("message", e => {
+    if (e.origin !== location.origin || !e.data || e.data.type !== "apercu") return;
+    const card = mapCard(e.data.card); card.num = e.data.num || card.id;
+    CARDS = Array.from({ length: e.data.total || 1 }, () => card);
+    box.innerHTML = "";
+    [["normale", "Normale"], ["brillante", "Brillante"], ["textless", "Textless"], ["doree", "Dorée"]].forEach(([v, l]) => {
+      const f = document.createElement("figure"); f.appendChild(cardEl(card, v));
+      const c = document.createElement("figcaption"); c.textContent = l; f.appendChild(c); box.appendChild(f);
+    });
+    parent.postMessage({ type: "apercu-taille", h: box.offsetHeight + 26 }, location.origin);
+    box.querySelectorAll("img").forEach(i => i.addEventListener("load", () => parent.postMessage({ type: "apercu-taille", h: box.offsetHeight + 26 }, location.origin)));
+  });
+  parent.postMessage({ type: "apercu-pret" }, location.origin);
+  return;
+}
 renderSnd();
 renderLegend();
 showPage(location.hash.slice(1));

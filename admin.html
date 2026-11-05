@@ -68,6 +68,8 @@ td.num { font-variant-numeric: tabular-nums; }
 .media { display: grid; gap: 8px; padding: 12px; min-width: 0; align-content: start; border: 1px dashed var(--line); border-radius: 12px; }
 .media .cur { width: 100%; box-sizing: border-box; justify-self: center; border-radius: 8px; background: #0b0707 center / cover no-repeat; border: 1px solid var(--line); }
 .media .cur.landscape { aspect-ratio: 4 / 3; } .media .cur.portrait { aspect-ratio: 63 / 88; max-width: 200px; }
+.preview { display: grid; gap: 8px; }
+.preview iframe { width: 100%; height: 420px; border: 1px solid var(--line); border-radius: 12px; background: #120d0a; }
 .cropper { display: grid; gap: 10px; justify-items: center; }
 .crop-box { position: relative; width: min(100%, 340px); overflow: hidden; border-radius: 8px; border: 2px solid var(--gold); background: #000; touch-action: none; cursor: grab; }
 .crop-box canvas { display: block; width: 100%; height: 100%; }
@@ -172,6 +174,11 @@ td.num { font-variant-numeric: tabular-nums; }
         <div class="crop-box" id="crop-box"><canvas id="crop-canvas"></canvas><div class="crop-guides" id="crop-guides"></div></div>
         <label for="crop-zoom" style="width:min(100%,340px)">Zoom<input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="1"></label>
         <div class="row"><button class="btn primary" id="crop-ok" type="button">Publier cette photo</button><button class="btn" id="crop-cancel" type="button">Annuler</button></div>
+      </div>
+      <div class="preview">
+        <h2>Aperçu de la carte</h2>
+        <p class="muted">Tel que les joueurs la verront. Il suit tes modifications en direct, même avant d'enregistrer, et pendant le cadrage d'une photo.</p>
+        <iframe id="e-preview" src="index.html?apercu" title="Aperçu de la carte" loading="lazy"></iframe>
       </div>
     </section>
 
@@ -325,6 +332,7 @@ async function loadCards() {
 function renderCards() {
   const q = $("c-search").value.trim().toLowerCase();
   cards = sortCards(cards); const nums = {}; cards.filter(c => c.published).forEach((c, i) => { nums[c.id] = i + 1; });
+  NUMS = nums; NTOTAL = Object.keys(nums).length;
   $("c-list").innerHTML = cards.filter(c => !q || c.name.toLowerCase().includes(q) || String(c.id) === q).map(c => {
     const img = media(c.photo_normale || c.photo_textless);
     return `<button class="ctile${c.published ? "" : " off"}" type="button" data-id="${c.id}">
@@ -347,7 +355,24 @@ function openEditor(c) {
   $("e-del").hidden = !!c._new; say($("e-status"), "");
   showMedia(); window.scrollTo(0, 0);
 }
+/* Aperçu : la page joueur dessine la carte (index.html?apercu) */
+let NUMS = {}, NTOTAL = 0, previewT = null, cropShot = null;
+function sendPreview() {
+  const fr = $("e-preview"); if (!current || !fr || !fr.contentWindow) return;
+  const card = { ...current, id: +$("e-id").value || current.id, name: $("e-name").value.trim() || "Sans nom", type: $("e-type").value, rarity: $("e-rarity").value,
+    sub: $("e-sub").value.trim(), fams: $("e-fams").value.trim(), text: $("e-text").value.trim(), art: current.art || ART[$("e-type").value] || "trad", hue: current.hue ?? 30 };
+  if (cropShot) { if (cropShot.variant === "normale") card.photo_normale = cropShot.url; else card.photo_textless = cropShot.url; }
+  fr.contentWindow.postMessage({ type: "apercu", card, num: NUMS[current.id] || card.id, total: Math.max(NTOTAL, 1) }, location.origin);
+}
+const queuePreview = () => { clearTimeout(previewT); previewT = setTimeout(sendPreview, 120); };
+window.addEventListener("message", e => {
+  if (e.origin !== location.origin || !e.data) return;
+  if (e.data.type === "apercu-pret") sendPreview();
+  if (e.data.type === "apercu-taille") $("e-preview").style.height = Math.min(Math.max(e.data.h, 200), 1400) + "px";
+});
+["e-name", "e-type", "e-rarity", "e-sub", "e-fams", "e-text", "e-id"].forEach(id => $(id).addEventListener("input", queuePreview));
 function showMedia() {
+  queuePreview();
   const c = current;
   $("m-normale").style.backgroundImage = c.photo_normale ? `url('${media(c.photo_normale)}')` : "none";
   $("m-textless").style.backgroundImage = c.photo_textless ? `url('${media(c.photo_textless)}')` : "none";
@@ -418,6 +443,7 @@ async function startCrop(file, variant) {
 function drawCrop() {
   const cv = $("crop-canvas"), src = renderTo(crop.img, crop.w / 2, crop.h / 2, crop.zoom, crop.cx, crop.cy);
   cv.width = src.width; cv.height = src.height; cv.getContext("2d").drawImage(src, 0, 0);
+  cropShot = { variant: crop.variant, url: cv.toDataURL("image/jpeg", .8) }; queuePreview();
 }
 $("crop-zoom").oninput = e => { crop.zoom = +e.target.value; drawCrop(); };
 (() => {
@@ -432,14 +458,14 @@ $("crop-zoom").oninput = e => { crop.zoom = +e.target.value; drawCrop(); };
   });
   ["pointerup", "pointercancel"].forEach(ev => box.addEventListener(ev, () => drag = null));
 })();
-$("crop-cancel").onclick = () => { $("cropper").hidden = true; crop = null; };
+$("crop-cancel").onclick = () => { $("cropper").hidden = true; crop = null; cropShot = null; queuePreview(); };
 $("crop-ok").onclick = async () => {
   const b = $("crop-ok"); b.disabled = true; say($("e-status"), "Envoi de la photo…");
   try {
     const blob = await toBlob(renderTo(crop.img, crop.w, crop.h, crop.zoom, crop.cx, crop.cy));
     const path = await upload(blob, `${pad(current.id)}-${crop.variant}`, "image/jpeg");
     current = await setCardField(current.id, crop.variant === "normale" ? "photo_normale" : "photo_textless", path);
-    showMedia(); $("cropper").hidden = true; crop = null; say($("e-status"), "Photo publiée : elle est déjà visible dans l'appli.");
+    cropShot = null; showMedia(); $("cropper").hidden = true; crop = null; say($("e-status"), "Photo publiée : elle est déjà visible dans l'appli.");
   } catch (e) { say($("e-status"), "Erreur d'envoi : " + e.message, false); }
   b.disabled = false;
 };
