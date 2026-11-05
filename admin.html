@@ -146,6 +146,12 @@ td.num { font-variant-numeric: tabular-nums; }
         <label for="e-kind">Proche d'un gadz (vide pour un gadz)<input id="e-kind" list="kinds" placeholder="Za, Zon, Pote…" maxlength="20"><datalist id="kinds"><option value="Za"><option value="Zon"><option value="Pote"><option value="Enfant"></datalist></label>
         <label for="e-fams">Fam's (vide = 23-151)<input id="e-fams"></label>
       </div>
+      <div class="row" style="align-items:end;gap:12px">
+        <label for="e-cbg">Couleur du fond<input type="color" id="e-cbg" value="#4a2a3a" style="width:70px;height:40px;padding:2px"></label>
+        <label for="e-cfg">Couleur du motif<input type="color" id="e-cfg" value="#f1dfae" style="width:70px;height:40px;padding:2px"></label>
+        <button class="btn" id="e-cdef" type="button">Couleurs par défaut</button>
+        <span class="muted" id="e-cinfo" style="flex-basis:100%">Pour l'illustration des cartes sans photo (Chant, Trad's, Tabagn's).</span>
+      </div>
       <label for="e-text">Texte (facultatif, 110 caractères max)<textarea id="e-text" rows="2" maxlength="140"></textarea></label>
       <label class="check"><input type="checkbox" id="e-pub"> Publiée (visible dans l'album et dans les boosters)</label>
       <div class="row"><button class="btn primary" id="e-save" type="button">Enregistrer</button><button class="btn danger" id="e-del" type="button">Supprimer la carte</button></div>
@@ -362,16 +368,23 @@ function openEditor(c) {
   $("e-title").textContent = c._new ? "Nouvelle carte" : `Carte « ${c.name} » · code ${pad(c.id)}`;
   $("e-id").value = c.id; $("e-id").disabled = !c._new;
   $("e-name").value = c.name; $("e-type").value = c.type; $("e-rarity").value = c.rarity;
-  $("e-sub").value = c.sub || ""; $("e-kind").value = c.kind || ""; $("e-fams").value = c.fams || ""; $("e-text").value = c.text || ""; $("e-pub").checked = !!c.published;
+  $("e-sub").value = c.sub || ""; $("e-kind").value = c.kind || "";
+  setColor("e-cbg", c.color_bg, "#4a2a3a"); setColor("e-cfg", c.color_fg, "#f1dfae"); colorInfo(); $("e-fams").value = c.fams || ""; $("e-text").value = c.text || ""; $("e-pub").checked = !!c.published;
   $("e-del").hidden = !!c._new; say($("e-status"), "");
   showMedia(); window.scrollTo(0, 0);
 }
+/* Couleurs de l'illustration : vides = couleurs automatiques */
+function setColor(id, v, def) { const i = $(id); i.value = v || def; i.dataset.on = v ? "1" : ""; }
+const colorOf = id => $(id).dataset.on ? $(id).value : null;
+function colorInfo() { $("e-cinfo").textContent = (colorOf("e-cbg") || colorOf("e-cfg") ? "Couleurs choisies. " : "Couleurs automatiques. ") + "Elles servent à l'illustration des cartes sans photo (Chant, Trad's, Tabagn's)."; }
+["e-cbg", "e-cfg"].forEach(id => $(id).addEventListener("input", () => { $(id).dataset.on = "1"; colorInfo(); queuePreview(); }));
+$("e-cdef").onclick = () => { setColor("e-cbg", null, "#4a2a3a"); setColor("e-cfg", null, "#f1dfae"); colorInfo(); queuePreview(); };
 /* Aperçu : la page joueur dessine la carte (index.html?apercu) */
 let NUMS = {}, NTOTAL = 0, previewT = null, cropShot = null;
 function sendPreview() {
   const fr = $("e-preview"); if (!current || !fr || !fr.contentWindow) return;
   const card = { ...current, id: +$("e-id").value || current.id, name: $("e-name").value.trim() || "Sans nom", type: $("e-type").value, rarity: $("e-rarity").value,
-    sub: $("e-sub").value.trim(), kind: $("e-kind").value.trim(), fams: $("e-fams").value.trim(), text: $("e-text").value.trim(), art: current.art || ART[$("e-type").value] || "trad", hue: current.hue ?? 30 };
+    sub: $("e-sub").value.trim(), kind: $("e-kind").value.trim(), color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), fams: $("e-fams").value.trim(), text: $("e-text").value.trim(), art: current.art || ART[$("e-type").value] || "trad", hue: current.hue ?? 30 };
   if (cropShot) { if (cropShot.variant === "normale") card.photo_normale = cropShot.url; else card.photo_textless = cropShot.url; }
   fr.contentWindow.postMessage({ type: "apercu", card, num: NUMS[current.id] || card.id, total: Math.max(NTOTAL, 1) }, location.origin);
 }
@@ -393,13 +406,13 @@ $("e-close").onclick = () => { $("editor").hidden = true; $("tab-cards").hidden 
 const ART = { "Gadz": "gadz", "Trad's": "trad", "Chant": "chant", "Manip'": "manip", "Tabagn's": "tabagn" };
 $("e-save").onclick = async () => {
   const row = { id: +$("e-id").value, name: $("e-name").value.trim(), type: $("e-type").value, rarity: $("e-rarity").value,
-    sub: $("e-sub").value.trim() || null, kind: $("e-type").value === "Gadz" ? ($("e-kind").value.trim() || null) : null, fams: $("e-fams").value.trim() || null, text: $("e-text").value.trim(), published: $("e-pub").checked, updated_at: new Date().toISOString() };
+    sub: $("e-sub").value.trim() || null, color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), kind: $("e-type").value === "Gadz" ? ($("e-kind").value.trim() || null) : null, fams: $("e-fams").value.trim() || null, text: $("e-text").value.trim(), published: $("e-pub").checked, updated_at: new Date().toISOString() };
   if (!row.name) return say($("e-status"), "Donne un nom à la carte.", false);
   if (row.type === "Gadz" && !row.sub) return say($("e-status"), "Un Gadz a besoin de sa promo (Bo211…).", false);
   if (current._new) { row.art = ART[row.type] || "trad"; row.hue = Math.floor(Math.random() * 360); }
   const q = current._new ? SB.from("cards").insert(row).select().single() : SB.from("cards").update(row).eq("id", row.id).select().single();
   const { data, error } = await q;
-  if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message.includes("kind") ? "il manque la mise à jour n° 4 dans Supabase." : error.message), false);
+  if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message.includes("color_") ? "il manque la mise à jour n° 5 dans Supabase." : error.message.includes("kind") ? "il manque la mise à jour n° 4 dans Supabase." : error.message), false);
   current = data; $("e-id").disabled = true; $("e-del").hidden = false; $("e-title").textContent = `Carte « ${data.name} » · code ${pad(data.id)}`;
   say($("e-status"), row.published ? "Enregistrée et publiée." : "Enregistrée en brouillon (invisible pour les joueurs).");
 };
