@@ -151,6 +151,13 @@ button { font: inherit; color: inherit; }
 .textbox.gadz { gap: 1cqw; }
 .textbox .pn { font-family: var(--f-gadz); font-size: 17cqw; line-height: .95; color: var(--wine); }
 .textbox .pn-sub { font-size: 4.2cqw; }
+/* Taille du texte selon sa longueur, et logo de la fam's en filigrane */
+.textbox.t-xs { font-size: 8.8cqw; } .textbox.t-s { font-size: 6.9cqw; } .textbox.t-m { font-size: 5.6cqw; } .textbox.t-xl { font-size: 4.2cqw; }
+.textbox.gadz.t-xs .pn-sub, .textbox.gadz.t-s .pn-sub { font-size: 5.2cqw; }
+.textbox.gadz.t-m .pn-sub, .textbox.gadz.t-l .pn-sub { font-size: 4.4cqw; }
+.textbox.gadz.t-xl .pn-sub { font-size: 3.8cqw; }
+.textbox { position: relative; isolation: isolate; }
+.textbox::before { content: ""; position: absolute; inset: 6% 4%; z-index: -1; background: url("assets/logo-fams.png") center / contain no-repeat; opacity: .14; pointer-events: none; }
 .numbering { position: relative; z-index: 1; display: flex; justify-content: space-between; font-family: var(--f-label); font-weight: 500; font-size: 3.2cqw; letter-spacing: .1em; text-transform: uppercase; color: var(--c-num); padding-inline: 1cqw; font-variant-numeric: tabular-nums; }
 
 /* Variante textless : l'image occupe toute la carte */
@@ -589,12 +596,17 @@ function pOf(card) {
   const firstYears = 200 + (now.getFullYear() - 2000) - (now.getMonth() < 8 ? 1 : 0); // 226 pour 2026-2027
   return firstYears - Number(m[1]) + 1;
 }
+function textSize(t) {
+  const n = t.length + 22 * (t.split("\n").length - 1); // une ligne sautée compte comme du texte
+  return n <= 22 ? "t-xs" : n <= 48 ? "t-s" : n <= 80 ? "t-m" : n <= 125 ? "t-l" : "t-xl";
+}
 function textboxHTML(card) {
   const gadz = card.type === "Gadz" && !card.kind; // un proche (Za, Zon…) n'a pas de Pn
   if (!gadz && !card.text) return "";
   const p = gadz ? pOf(card) : null;
-  if (p) return `<div class="textbox gadz"><div class="pn">${p === 1 ? ".onscrit" : p === 2 ? "Ancien" : "P" + p}</div>${card.text ? `<p class="pn-sub">${esc(card.text)}</p>` : ""}</div>`;
-  return `<div class="textbox"><p>${esc(card.text)}</p></div>`;
+  const sz = card.text ? textSize(card.text) : "";
+  if (p) return `<div class="textbox gadz ${sz}"><div class="pn">${p === 1 ? ".onscrit" : p === 2 ? "Ancien" : "P" + p}</div>${card.text ? `<p class="pn-sub">${esc(card.text)}</p>` : ""}</div>`;
+  return `<div class="textbox ${sz}"><p>${esc(card.text)}</p></div>`;
 }
 // Fond neutre des Gadz sans photo
 const GADZ_DEFAULT = { normale: "assets/gadz-defaut-normale.jpg", textless: "assets/gadz-defaut-textless.jpg?v=2" };
