@@ -183,11 +183,14 @@ button { font: inherit; color: inherit; }
 .r-mythique .foil { opacity: .28; }
 .v-brillante .foil, .v-doree .foil { opacity: .5; animation: sheen 4.5s ease-in-out infinite alternate; }
 /* Brillante : bordure irisée qui ondule, bien visible même quand on fait défiler l'album */
-.v-brillante { box-shadow: 0 10px 24px -10px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.35), 0 0 14px -2px rgba(170,190,255,.55); }
-.v-brillante .card-in { background: linear-gradient(115deg, #f7a8d8, #ffe08a, #9df0c4, #8fd0ff, #b8a2ff, #f7a8d8, #ffe08a, #9df0c4, #8fd0ff, #b8a2ff, #f7a8d8); background-size: 200% 200%; animation: iris 6s linear infinite; }
-.v-brillante .frame { border-color: rgba(255,255,255,.85); }
+.v-brillante { box-shadow: 0 10px 24px -10px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.5), -6px 0 18px -4px rgba(255,90,190,.65), 6px 0 18px -4px rgba(70,190,255,.65); }
+/* Bordure irisée : arc-en-ciel saturé qui défile + reflet blanc qui balaie la bordure */
+.v-brillante .card-in { background: linear-gradient(115deg, #ff4fa3, #ffb23f, #f4f04a, #3ef08f, #3fc8ff, #6f7bff, #c46bff, #ff4fa3, #ffb23f, #f4f04a, #3ef08f, #3fc8ff, #6f7bff, #c46bff, #ff4fa3); background-size: 200% 200%; animation: iris 3.2s linear infinite; }
+.v-brillante .card-in::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.9) 50%, transparent 60%) 0 0 / 300% 100% no-repeat; animation: glint 2.6s ease-in-out infinite; }
+.v-brillante .frame { border-color: rgba(255,255,255,.95); }
 @keyframes iris { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
-@media (prefers-reduced-motion: reduce) { .v-brillante .card-in { animation: none; } }
+@keyframes glint { 0% { background-position: 130% 0; } 60%, 100% { background-position: -40% 0; } }
+@media (prefers-reduced-motion: reduce) { .v-brillante .card-in, .v-brillante .card-in::before { animation: none; } }
 @keyframes sheen { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
 
 /* ---------- Dos de carte ---------- */
