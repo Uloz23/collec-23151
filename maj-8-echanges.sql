@@ -1,10 +1,14 @@
 -- =====================================================================
 --  Collec' 23-151 : mise à jour n° 8
---  Échanges entre joueurs : une carte contre une carte de même rareté (variantes libres),
+--  Échanges entre joueurs : une carte contre une carte de même rareté et de même version
+--  (réglable dans l'admin : « même version obligatoire »),
 --  proposition valable 2 jours, annulable, modifiable (la modification remplace la proposition).
 --  À coller dans Supabase > SQL Editor > New query, puis « Run ». Relançable sans danger.
 --  (Nécessite les mises à jour n° 3 et n° 6.)
 -- =====================================================================
+
+-- Réglage par défaut : même version obligatoire (n'écrase pas un réglage déjà fait)
+update public.settings set data = '{"trade_same_variant": true}'::jsonb || data where id = 1;
 
 create table if not exists public.trades (
   id            bigserial primary key,
@@ -52,6 +56,8 @@ begin
   if not public._owns(t.id, p_want_card, p_want_variant) then raise exception 'carte_plus_la'; end if;
   if (select rarity from public.cards where id = p_give_card) is distinct from (select rarity from public.cards where id = p_want_card) then
     raise exception 'rarete_differente'; end if;
+  if coalesce((select (data->>'trade_same_variant')::boolean from public.settings where id = 1), true) and p_give_variant <> p_want_variant then
+    raise exception 'version_differente'; end if;
   if (select count(*) from public.trades where from_id = me and status = 'attente') >= 15 then raise exception 'trop_echanges'; end if;
   if p_replaces is not null then
     select * into old from public.trades where id = p_replaces for update;
