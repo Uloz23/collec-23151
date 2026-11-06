@@ -162,11 +162,13 @@ td.num { font-variant-numeric: tabular-nums; }
           <h2>Photo normale (4:3)</h2>
           <div class="cur landscape" id="m-normale"></div>
           <label class="btn" style="text-align:center">Prendre ou choisir une photo<input type="file" accept="image/*" id="f-normale" hidden></label>
+          <button class="btn" type="button" id="r-normale">Recadrer la photo actuelle</button>
         </div>
         <div class="media">
           <h2>Photo pleine carte</h2>
           <div class="cur portrait" id="m-textless"></div>
           <label class="btn" style="text-align:center">Prendre ou choisir une photo<input type="file" accept="image/*" id="f-textless" hidden></label>
+          <button class="btn" type="button" id="r-textless">Recadrer la photo actuelle</button>
         </div>
         <div class="media">
           <h2>Sons</h2>
@@ -438,6 +440,34 @@ async function setCardField(id, field, path) {
   return data;
 }
 const SIZES = { normale: [960, 720], textless: [900, 1257] };
+function loadImageUrl(url) {
+  return new Promise((res, rej) => { const img = new Image(); img.crossOrigin = "anonymous"; img.onload = () => res(img); img.onerror = rej; img.src = url; });
+}
+// Chemin de l'original (photo avant recadrage), gardé pour pouvoir recadrer plus tard
+const originalPath = (id, variant) => `originaux/${pad(id)}-${variant}.jpg`;
+async function saveOriginal(img, id, variant) {
+  const k = Math.min(1, 2400 / Math.max(img.width, img.height));
+  const cv = document.createElement("canvas"); cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+  cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+  const blob = await new Promise(r => cv.toBlob(r, "image/jpeg", .9));
+  await SB.storage.from(CFG.bucket).upload(originalPath(id, variant), blob, { contentType: "image/jpeg", upsert: true, cacheControl: "60" });
+}
+// Recadrer sans renvoyer de photo : on repart de l'original s'il existe, sinon de la photo publiée
+async function recrop(variant) {
+  if (!current || current._new) return say($("e-status"), "Enregistre d'abord la carte.", false);
+  const t = "?t=" + Date.now(), list = [media(originalPath(current.id, variant)) + t];
+  const cur = variant === "normale" ? current.photo_normale : current.photo_textless;
+  if (cur) list.push(media(cur));
+  if (variant === "textless") { list.push(media(originalPath(current.id, "normale")) + t); if (current.photo_normale) list.push(media(current.photo_normale)); }
+  say($("e-status"), "Chargement de la photo…");
+  for (const url of list) {
+    try { const img = await loadImageUrl(url); say($("e-status"), url.includes("/originaux/") ? "Photo d'origine chargée : tu peux recadrer librement." : "Pas de photo d'origine gardée pour cette carte : on recadre la photo publiée (on peut zoomer, pas dézoomer)."); return startCrop(img, variant, true); }
+    catch (e) {}
+  }
+  say($("e-status"), "Aucune photo à recadrer pour l'instant.", false);
+}
+$("r-normale").onclick = () => recrop("normale");
+$("r-textless").onclick = () => recrop("textless");
 function loadImage(file) {
   return new Promise((res, rej) => { const url = URL.createObjectURL(file); const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = url; });
 }
@@ -453,11 +483,11 @@ const toBlob = cv => new Promise(r => cv.toBlob(r, "image/jpeg", .85));
 
 /* Recadrage au doigt */
 let crop = null;
-async function startCrop(file, variant) {
+async function startCrop(file, variant, already) {
   if (!current || current._new) return say($("e-status"), "Enregistre d'abord la carte, puis ajoute la photo.", false);
-  const img = await loadImage(file);
+  const img = already ? file : await loadImage(file);
   const [w, h] = SIZES[variant];
-  crop = { img, variant, w, h, zoom: 1, cx: .5, cy: variant === "textless" ? .45 : .4 };
+  crop = { img, variant, fresh: !already, w, h, zoom: 1, cx: .5, cy: variant === "textless" ? .45 : .4 };
   $("crop-title").textContent = variant === "normale" ? "Cadrage de la photo normale" : "Cadrage de la photo pleine carte";
   const box = $("crop-box"); box.style.aspectRatio = `${w} / ${h}`;
   $("crop-guides").innerHTML = variant === "textless" ? `<div class="band" style="top:0;height:12%"></div><div class="band b" style="bottom:0;height:15%"></div>` : "";
@@ -489,6 +519,7 @@ $("crop-ok").onclick = async () => {
     const blob = await toBlob(renderTo(crop.img, crop.w, crop.h, crop.zoom, crop.cx, crop.cy));
     const path = await upload(blob, `${pad(current.id)}-${crop.variant}`, "image/jpeg");
     current = await setCardField(current.id, crop.variant === "normale" ? "photo_normale" : "photo_textless", path);
+    if (crop.fresh) { try { await saveOriginal(crop.img, current.id, crop.variant); } catch (e) {} }
     cropShot = null; showMedia(); $("cropper").hidden = true; crop = null; say($("e-status"), "Photo publiée : elle est déjà visible dans l'appli.");
   } catch (e) { say($("e-status"), "Erreur d'envoi : " + e.message, false); }
   b.disabled = false;
@@ -521,9 +552,11 @@ $("i-files").onchange = async e => {
     const l = line(`${f.name} → carte ${pad(id)} (${field.replace("_", " ")})…`);
     try {
       let blob = f, type = f.type || (isAudio ? "audio/mpeg" : "image/jpeg");
-      if (!isAudio) { const img = await loadImage(f); const [w, h] = SIZES[variant === "textless" ? "textless" : "normale"]; blob = await toBlob(renderTo(img, w, h)); type = "image/jpeg"; }
+      let img = null;
+      if (!isAudio) { img = await loadImage(f); const [w, h] = SIZES[variant === "textless" ? "textless" : "normale"]; blob = await toBlob(renderTo(img, w, h)); type = "image/jpeg"; }
       const path = await upload(blob, `${pad(id)}-${isAudio ? (variant === "normale" ? "son" : "remix") : variant}`, type);
       await setCardField(id, field, path);
+      if (img) { try { await saveOriginal(img, id, variant === "textless" ? "textless" : "normale"); } catch (e) {} }
       l.textContent = `${f.name} → carte ${pad(id)} ✓`; l.className = "ok"; done++;
     } catch (err) { l.textContent = `${f.name} : erreur (${err.message})`; l.className = "bad"; }
   }
