@@ -404,6 +404,36 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 .install-txt { flex: 1; text-align: left; font-family: var(--f-body); font-size: 14px; line-height: 1.35; color: var(--gold-soft); }
 .install-txt b { color: var(--gold); }
 .install-x { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 16px; cursor: pointer; }
+.trades { display: grid; gap: 10px; }
+.trade-list { display: grid; gap: 10px; }
+.trade { display: grid; gap: 8px; padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: rgba(241,223,174,.04); }
+.trade.in { border-color: rgba(212,178,106,.6); background: rgba(212,178,106,.08); }
+.trade.done { opacity: .6; }
+.trade-head { font-family: var(--f-label); font-size: 15px; letter-spacing: .04em; color: var(--gold-soft); }
+.trade-head b { font-family: var(--f-gadz); font-weight: 400; font-size: 18px; color: var(--gold); }
+.trade-head small { display: block; color: var(--muted); font-size: 13px; }
+.trade-cards { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.trade-cards figure { margin: 0; display: grid; gap: 4px; justify-items: center; }
+.trade-cards figure .card { width: min(100%, 120px); }
+.trade-cards figcaption { font-family: var(--f-label); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.trade-cards .arrow { font-size: 22px; color: var(--gold); }
+.trade-act { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.trade-act .btn-primary { padding: 9px 16px; font-size: 15px; }
+.trade-ov { align-items: stretch; }
+.trade-ov .ov-top { width: 100%; max-width: 720px; margin: 0 auto; }
+.tb-body { width: 100%; max-width: 720px; margin: 0 auto; display: grid; gap: 10px; padding-bottom: 120px; }
+.tb-help { margin: 0; font-family: var(--f-body); font-size: 15px; color: var(--gold-soft); text-align: center; }
+.tb-h { margin: 8px 0 0; font-family: var(--f-label); font-size: 16px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+.tb-h small { font-size: 13px; letter-spacing: .04em; text-transform: none; color: var(--muted); margin-left: 6px; }
+.tb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 10px; }
+.tb-grid button { position: relative; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 6px; outline-offset: 3px; }
+.tb-grid button[aria-pressed="true"] { outline: 3px solid var(--gold); }
+.tb-grid button:disabled { opacity: .25; cursor: not-allowed; }
+.tb-grid .tb-n { position: absolute; top: 3px; right: 3px; z-index: 5; padding: 1px 6px; border-radius: 8px; background: var(--parchment); color: var(--ink); font-family: var(--f-label); font-size: 12px; }
+.tb-empty { grid-column: 1 / -1; margin: 0; font-family: var(--f-body); color: var(--muted); }
+.tb-foot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; display: grid; gap: 8px; justify-items: center; padding: 12px 16px max(14px, env(safe-area-inset-bottom, 0px)); background: rgba(14,9,9,.96); border-top: 1px solid var(--line); }
+.tb-sum { margin: 0; font-family: var(--f-label); font-size: 14px; letter-spacing: .04em; color: var(--muted); text-align: center; }
+#v-trade { padding: 12px 18px; font-size: 16px; }
 </style>
 
 <div class="wrap">
@@ -478,9 +508,13 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 
   <!-- Page 3 : la fam's (classement et albums des autres) -->
   <section class="page page-fams" id="page-fams" aria-labelledby="board-title" hidden>
+    <section class="trades" id="trades" aria-labelledby="trades-title" hidden>
+      <h2 class="page-title" id="trades-title">Échanges</h2>
+      <div class="trade-list" id="trade-list"></div>
+    </section>
     <section class="board">
       <h2 class="page-title" id="board-title">Classement de la fam's</h2>
-      <p class="board-hint">Touche un pseudo pour voir son album</p>
+      <p class="board-hint">Touche un pseudo pour voir son album et lui proposer un échange</p>
       <ol class="board-list" id="board"></ol>
     </section>
   </section>
@@ -489,7 +523,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 <nav class="tabbar" aria-label="Pages">
   <button type="button" class="tab" id="tab-boosters" data-page="boosters" aria-current="page"><span class="tab-ico" aria-hidden="true">✦</span>Boosters<span class="tab-badge" id="tab-badge" hidden></span></button>
   <button type="button" class="tab" id="tab-collec" data-page="collec"><span class="tab-ico" aria-hidden="true">▦</span>Ma collec'<span class="tab-sub" id="tab-sub"></span></button>
-  <button type="button" class="tab" id="tab-fams" data-page="fams"><span class="tab-ico" aria-hidden="true">♜</span>La fam's<span class="tab-sub" id="tab-fams-sub"></span></button>
+  <button type="button" class="tab" id="tab-fams" data-page="fams"><span class="tab-ico" aria-hidden="true">♜</span>La fam's<span class="tab-sub" id="tab-fams-sub"></span><span class="tab-badge" id="tab-fams-badge" hidden></span></button>
 </nav>
 
 <div class="overlay" id="opening" hidden role="dialog" aria-modal="true" aria-label="Ouverture du booster">
@@ -503,6 +537,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
   <div class="stage-v"><div class="big" id="v-card"></div></div>
   <div class="vtabs" id="v-tabs"></div>
   <button class="btn-ghost" id="v-audio" type="button" hidden>♪ Écouter l'extrait</button>
+  <button class="btn-primary" id="v-trade" type="button" hidden>⇄ Proposer un échange contre cette carte</button>
   <p class="owned-line" id="v-owned"></p>
 </div>
 
@@ -531,6 +566,18 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
     </form>
   </div>
 </div>
+<div class="overlay trade-ov" id="trade-ov" hidden role="dialog" aria-modal="true" aria-labelledby="tb-title">
+  <div class="ov-top"><span class="ov-count" id="tb-title">Échange</span><button class="btn-ghost" id="tb-close" type="button">Fermer</button></div>
+  <div class="tb-body">
+    <p class="tb-help">Une carte contre une carte <b>de même rareté</b>, dans n'importe quelle version. La proposition reste valable 2 jours.</p>
+    <h3 class="tb-h">Tu reçois <small id="tb-want-sub"></small></h3>
+    <div class="tb-grid" id="tb-want"></div>
+    <h3 class="tb-h">Tu donnes <small id="tb-give-sub"></small></h3>
+    <div class="tb-grid" id="tb-give"></div>
+  </div>
+  <div class="tb-foot"><p class="tb-sum" id="tb-sum"></p><button class="btn-primary" id="tb-send" type="button" disabled>Envoyer la proposition</button></div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -618,6 +665,13 @@ const ERRORS = {
   cadeau_ferme: "Les cadeaux entre joueurs sont désactivés pour l'instant.",
   pas_soi_meme: "Tu ne peux pas t'offrir un booster à toi-même 😉",
   free_gift: "Il manque la mise à jour n° 6 dans Supabase.",
+  rarete_differente: "Les deux cartes doivent avoir la même rareté.",
+  carte_plus_la: "Une des deux cartes n'est plus dans la collection : l'échange n'est plus possible.",
+  echange_termine: "Cet échange est déjà terminé (accepté, refusé, annulé ou expiré).",
+  echange_introuvable: "Échange introuvable.",
+  echange_impossible: "Le compte test ne peut pas échanger.",
+  trop_echanges: "Tu as déjà 15 propositions en attente : attends des réponses ou annules-en.",
+  trade_: "Il manque la mise à jour n° 8 dans Supabase.",
   player_album: "Il manque la mise à jour n° 2 dans Supabase."
 };
 const errText = e => { const m = String(e && e.message || e); const k = Object.keys(ERRORS).find(k => m.includes(k)); return k ? ERRORS[k] : "Problème de connexion. Vérifie ton réseau et réessaie."; };
@@ -811,7 +865,7 @@ function showPage(name) {
   ["boosters", "collec", "fams"].forEach(n => { const t = $("tab-" + n); if (n === tab) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
   try { if (location.hash !== "#" + name) history.replaceState(null, "", "#" + name); } catch (e) {}
   window.scrollTo(0, 0);
-  if (name === "fams") renderBoard();
+  if (name === "fams") { renderBoard(); refreshTrades(); }
 }
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => showPage(t.dataset.page)));
 window.addEventListener("hashchange", () => showPage(location.hash.slice(1)));
@@ -1177,6 +1231,7 @@ function renderViewer() {
   const total = ownedCount(card.id);
   $("v-owned").textContent = `${peek ? "Il l'a" : "Possédée"} ${total} fois · incline la carte pour voir le reflet`;
   $("v-audio").hidden = !hasAudio(card);
+  $("v-trade").hidden = !peek || state.isTest;
   const remix = audioFor(card, variant) !== audioFor(card, "normale");
   $("v-audio").textContent = remix ? "♪ Écouter le remix" : "♪ Écouter l'extrait";
 }
@@ -1294,14 +1349,151 @@ $("login-form").addEventListener("submit", async e => {
     ac(); // débloque le son pendant ce geste
     const r = await rpc(mode === "new" ? "register" : "login", { p_pseudo: pseudo, p_pin: pin });
     if (r.error) { err.textContent = ERRORS[r.error] || "Connexion impossible."; return; }
-    saveToken(r.token); applyState(r.state); hideLogin(); renderAll();
+    saveToken(r.token); applyState(r.state); hideLogin(); renderAll(); refreshTrades();
     $("f-pin").value = ""; $("f-pin2").value = "";
     toast(mode === "new" ? `Bienvenue ${state.pseudo} ! Ton premier booster t'attend.` : `Re-bonjour ${state.pseudo} !`);
   } catch (e2) { err.textContent = errText(e2); }
   finally { go.disabled = false; }
 });
-$("logout-btn").onclick = () => { saveToken(null); state.owned = {}; renderAll(); setMode("old"); showLogin("Connecte-toi avec ton pseudo et ton code."); };
+$("logout-btn").onclick = () => { saveToken(null); state.owned = {}; trades = []; renderTrades(); renderAll(); setMode("old"); showLogin("Connecte-toi avec ton pseudo et ton code."); };
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshState(); });
+
+/* ================= Échanges ================= */
+let trades = [], tradeBusy = false;
+const cardById = id => CARDS.find(c => c.id === id);
+const VSHORT = { normale: "normale", brillante: "brillante", textless: "textless", doree: "dorée" };
+const seenTrades = () => { try { return JSON.parse(localStorage.getItem("collec23151-trades-vus") || "[]"); } catch (e) { return []; } };
+async function refreshTrades() {
+  if (!TOKEN || state.isTest) { trades = []; renderTrades(); return; }
+  try {
+    trades = await rpc("trade_list", { p_token: TOKEN });
+    // Prévenir celui qui a proposé quand son échange a été accepté ou refusé
+    const seen = seenTrades(), fresh = trades.filter(t => t.mine && ["acceptee", "refusee"].includes(t.status) && !seen.includes(t.id));
+    if (fresh.length) {
+      const t = fresh[0];
+      toast(t.status === "acceptee" ? `⇄ ${t.other} a accepté ton échange !` : `${t.other} a refusé ton échange.`);
+      if (fresh.some(x => x.status === "acceptee")) refreshState();
+      try { localStorage.setItem("collec23151-trades-vus", JSON.stringify(seen.concat(fresh.map(x => x.id)).slice(-200))); } catch (e) {}
+    }
+  } catch (e) { trades = []; }
+  renderTrades();
+}
+function miniCard(cid, v, label) {
+  const c = cardById(cid), f = document.createElement("figure");
+  if (c) f.appendChild(cardEl(c, v)); else f.innerHTML = `<div class="card"></div>`;
+  const cap = document.createElement("figcaption"); cap.textContent = label + (v !== "normale" ? " · " + VSHORT[v] : ""); f.appendChild(cap);
+  return f;
+}
+const leftTime = iso => { const ms = Date.parse(iso) - Date.now(), h = Math.max(0, Math.floor(ms / 3600e3)); return h >= 24 ? `${Math.floor(h / 24)} j ${h % 24} h` : h ? `${h} h` : `${Math.max(1, Math.ceil(ms / 60e3))} min`; };
+function renderTrades() {
+  const pending = trades.filter(t => t.status === "attente"), inc = pending.filter(t => !t.mine).length;
+  const badge = $("tab-fams-badge"); badge.hidden = !inc; badge.textContent = inc;
+  const box = $("trades"); box.hidden = !trades.length;
+  const list = $("trade-list"); list.innerHTML = "";
+  const STATUS = { acceptee: "Échange fait ✓", refusee: "Refusé", annulee: "Annulé", expiree: "Expiré", modifiee: "Remplacé par une nouvelle proposition", impossible: "Impossible : une des cartes n'était plus là" };
+  trades.filter(t => t.status !== "modifiee").forEach(t => {
+    const el = document.createElement("article"), open = t.status === "attente";
+    el.className = "trade" + (open && !t.mine ? " in" : "") + (open ? "" : " done");
+    const head = document.createElement("div"); head.className = "trade-head";
+    head.innerHTML = (t.mine ? `Tu proposes à <b>${esc(t.other)}</b>` : `<b>${esc(t.other)}</b> te propose`) +
+      `<small>${open ? "Valable encore " + leftTime(t.expires_at) : STATUS[t.status] || t.status}</small>`;
+    el.appendChild(head);
+    // Toujours vu de mon côté : à gauche ce que je donne, à droite ce que je reçois
+    const myGive = t.mine ? [t.give_card, t.give_variant] : [t.want_card, t.want_variant];
+    const myGet = t.mine ? [t.want_card, t.want_variant] : [t.give_card, t.give_variant];
+    const cards = document.createElement("div"); cards.className = "trade-cards";
+    cards.appendChild(miniCard(myGive[0], myGive[1], "Tu donnes"));
+    const ar = document.createElement("span"); ar.className = "arrow"; ar.textContent = "⇄"; cards.appendChild(ar);
+    cards.appendChild(miniCard(myGet[0], myGet[1], "Tu reçois"));
+    el.appendChild(cards);
+    if (open) {
+      const act = document.createElement("div"); act.className = "trade-act";
+      const btn = (txt, cls, fn) => { const b = document.createElement("button"); b.type = "button"; b.className = cls; b.textContent = txt; b.onclick = fn; act.appendChild(b); };
+      if (!t.mine) {
+        btn("Refuser", "btn-ghost", () => answerTrade(t, false));
+        btn("Modifier", "btn-ghost", () => openTrade(t.other, { want: myGet, give: myGive, replaces: t.id }));
+        btn("Accepter", "btn-primary", () => answerTrade(t, true));
+      } else {
+        btn("Annuler", "btn-ghost", () => cancelTrade(t));
+        btn("Modifier", "btn-ghost", () => openTrade(t.other, { want: myGet, give: myGive, replaces: t.id }));
+      }
+      el.appendChild(act);
+    }
+    list.appendChild(el);
+  });
+}
+async function answerTrade(t, ok) {
+  if (tradeBusy) return; tradeBusy = true;
+  try {
+    applyState(await rpc("trade_answer", { p_token: TOKEN, p_id: t.id, p_accept: ok }));
+    toast(ok ? "⇄ Échange fait ! La carte est dans ta collec'." : "Proposition refusée.");
+    renderAll();
+  } catch (e) { toast(errText(e)); }
+  tradeBusy = false; refreshTrades();
+}
+async function cancelTrade(t) {
+  if (tradeBusy) return; tradeBusy = true;
+  try { await rpc("trade_cancel", { p_token: TOKEN, p_id: t.id }); toast("Proposition annulée."); } catch (e) { toast(errText(e)); }
+  tradeBusy = false; refreshTrades();
+}
+// Fenêtre de composition : on choisit la carte reçue (chez l'autre) puis la carte donnée (chez soi, même rareté)
+let tb = null;
+const entriesOf = owned => {
+  const out = [];
+  CARDS.forEach(c => VORDER.forEach(v => { const n = owned[c.id + ":" + v] || 0; if (n > 0) out.push({ card: c, variant: v, n }); }));
+  return out;
+};
+async function openTrade(pseudo, pre = {}) {
+  if (state.isTest) return toast("Le compte test ne peut pas échanger.");
+  let other;
+  try { const r = await rpc("player_album", { p_token: TOKEN, p_pseudo: pseudo }); other = {}; (r.owned || []).forEach(([cid, v, n]) => { other[cid + ":" + v] = n; }); pseudo = r.pseudo; }
+  catch (e) { return toast(errText(e)); }
+  tb = { pseudo, other, want: pre.want || null, give: pre.give || null, replaces: pre.replaces || null };
+  $("tb-title").textContent = (tb.replaces ? "Modifier l'échange avec " : "Échange avec ") + pseudo;
+  $("tb-send").textContent = tb.replaces ? "Envoyer la nouvelle proposition" : "Envoyer la proposition";
+  renderTradeBuilder();
+  document.body.style.overflow = "hidden"; $("trade-ov").hidden = false; $("trade-ov").scrollTop = 0;
+  if (tb.want) setTimeout(scrollToGive, 50);
+}
+function renderTradeBuilder() {
+  const same = (a, c, v) => a && a[0] === c && a[1] === v;
+  const grid = (el, list, pick, isSel, ok) => {
+    el.innerHTML = "";
+    if (!list.length) { el.innerHTML = `<p class="tb-empty">Aucune carte.</p>`; return; }
+    list.forEach(e => {
+      const b = document.createElement("button"); b.type = "button";
+      b.setAttribute("aria-pressed", String(isSel(e))); b.setAttribute("aria-label", `${e.card.name} ${VSHORT[e.variant]}`);
+      b.disabled = !ok(e);
+      b.appendChild(cardEl(e.card, e.variant));
+      if (e.n > 1) b.insertAdjacentHTML("beforeend", `<span class="tb-n">×${e.n}</span>`);
+      b.onclick = () => pick(e); el.appendChild(b);
+    });
+  };
+  const wantCard = tb.want && cardById(tb.want[0]);
+  grid($("tb-want"), entriesOf(tb.other), e => { tb.want = [e.card.id, e.variant]; if (tb.give && cardById(tb.give[0]).rarity !== e.card.rarity) tb.give = null; renderTradeBuilder(); scrollToGive(); },
+    e => same(tb.want, e.card.id, e.variant), () => true);
+  const mine = entriesOf(state.owned);
+  grid($("tb-give"), wantCard ? mine.filter(e => e.card.rarity === wantCard.rarity) : mine, e => { tb.give = [e.card.id, e.variant]; renderTradeBuilder(); },
+    e => same(tb.give, e.card.id, e.variant), () => !!wantCard);
+  $("tb-want-sub").textContent = `dans la collec' de ${tb.pseudo}`;
+  $("tb-give-sub").textContent = wantCard ? `tes cartes ${RLABEL[wantCard.rarity].toLowerCase()}` : "choisis d'abord la carte que tu veux";
+  const giveCard = tb.give && cardById(tb.give[0]);
+  $("tb-sum").textContent = wantCard && giveCard ? `Tu donnes ${giveCard.name} (${VSHORT[tb.give[1]]}) contre ${wantCard.name} (${VSHORT[tb.want[1]]})` : "Choisis une carte de chaque côté.";
+  $("tb-send").disabled = !(wantCard && giveCard);
+}
+function scrollToGive() { const h = $("tb-give").previousElementSibling; if (h) h.scrollIntoView({ behavior: "smooth", block: "start" }); }
+function closeTrade() { $("trade-ov").hidden = true; tb = null; document.body.style.overflow = ""; }
+$("tb-close").addEventListener("click", closeTrade);
+$("tb-send").addEventListener("click", async () => {
+  if (!tb || !tb.want || !tb.give || tradeBusy) return; tradeBusy = true; $("tb-send").disabled = true;
+  try {
+    await rpc("trade_propose", { p_token: TOKEN, p_to: tb.pseudo, p_give_card: tb.give[0], p_give_variant: tb.give[1], p_want_card: tb.want[0], p_want_variant: tb.want[1], p_replaces: tb.replaces });
+    toast(`⇄ Proposition envoyée à ${tb.pseudo}`); closeTrade();
+  } catch (e) { toast(errText(e)); $("tb-send").disabled = false; }
+  tradeBusy = false; refreshTrades();
+});
+$("v-trade").addEventListener("click", () => { if (!viewing || !peek) return; const w = [viewing.card.id, viewing.variant], who = peek.pseudo; closeViewer(); openTrade(who, { want: w }); });
+setInterval(() => { if (TOKEN && !document.hidden) refreshTrades(); }, 60000);
 
 /* ================= Booster gratuit à offrir (1 par heure pendant le week-end) ================= */
 const fmtEvery = m => m < 60 ? `${Math.round(m)} min` : m < 1440 ? `${Math.round(m / 60)} h` : m === 1440 ? "jour" : `${Math.round(m / 1440)} jours`;
@@ -1383,7 +1575,7 @@ setMode("new");
   catch (e) { $("login-sub").textContent = "Impossible de charger les cartes. Vérifie ta connexion et recharge la page."; return; }
   renderAll();
   if (TOKEN) {
-    try { applyState(await rpc("me", { p_token: TOKEN })); hideLogin(); renderAll(); }
+    try { applyState(await rpc("me", { p_token: TOKEN })); hideLogin(); renderAll(); refreshTrades(); }
     catch (e) { if (TOKEN) { $("login-sub").textContent = "Problème de connexion. Recharge la page."; return; } }
   } else showLogin();
   setInterval(renderReserve, 1000);
