@@ -374,6 +374,11 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .peek-bar b { font-family: var(--f-gadz); font-weight: 400; font-size: 19px; }
 
 /* ---------- Offrir (joueurs autorisés par l'admin) ---------- */
+.freegift { width: 100%; max-width: 520px; display: grid; gap: 8px; text-align: left; border: 1px solid rgba(212,178,106,.35); border-radius: 14px; background: rgba(212,178,106,.07); padding: 12px 16px; margin-top: 10px; }
+.fg-title { font-family: var(--f-label); font-weight: 600; font-size: 16px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+.fg-row { display: flex; gap: 10px; }
+.fg-row select { flex: 1; min-width: 0; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: #241816; color: var(--parchment); font-size: 16px; }
+.fg-info { font-family: var(--f-label); font-size: 14px; letter-spacing: .04em; color: var(--muted); }
 .giver { width: 100%; max-width: 520px; text-align: left; border: 1px solid var(--line); border-radius: 14px; background: rgba(108,96,157,.12); padding: 12px 16px; margin-top: 10px; }
 .giver summary { cursor: pointer; font-family: var(--f-label); font-weight: 600; font-size: 16px; letter-spacing: .12em; text-transform: uppercase; color: var(--fams-soft); }
 .giver-body { display: grid; gap: 12px; margin-top: 12px; }
@@ -433,6 +438,14 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
     <button class="btn-primary big" id="open-btn" type="button">Ouvrir un booster</button>
     <p class="rhythm" id="rhythm"></p>
 
+    <div class="freegift" id="freegift" hidden>
+      <span class="fg-title">🎁 Offrir un booster</span>
+      <div class="fg-row">
+        <select id="fg-who" aria-label="À qui offrir un booster"><option value="">Choisis un joueur…</option></select>
+        <button class="btn-ghost" id="fg-go" type="button">Offrir</button>
+      </div>
+      <span class="fg-info" id="fg-info"></span>
+    </div>
     <details class="giver" id="giver" hidden>
       <summary>Offrir des boosters</summary>
       <div class="giver-body">
@@ -574,6 +587,7 @@ let state = { pseudo: "", stock: 0, gifts: 0, gift: "", cap: 5, nextAt: null, pe
 function applyState(s) {
   state.pseudo = s.pseudo; state.stock = s.stock; state.gifts = s.gifts; state.gift = s.gift_reason || "";
   state.canGift = !!s.can_gift; state.isTest = !!s.is_test;
+  state.freeOn = s.free_on !== undefined ? !!s.free_on : false; state.freeNext = s.free_next ? Date.parse(s.free_next) : null; state.freeMin = s.free_min || 60;
   state.cap = s.cap; state.nextAt = s.next_at ? Date.parse(s.next_at) : null; state.periodMin = s.period_min;
   state.owned = {};
   (s.owned || []).forEach(([cid, v, n]) => { state.owned[cid + ":" + v] = n; });
@@ -595,6 +609,10 @@ const ERRORS = {
   pas_autorise: "Tu n'as pas (ou plus) le droit d'offrir des boosters.",
   session_invalide: "Ta session a expiré : reconnecte-toi.",
   joueur_introuvable: "Ce joueur n'existe plus.",
+  cadeau_attente: "Tu as déjà offert un booster récemment : patiente un peu.",
+  cadeau_ferme: "Les cadeaux entre joueurs sont désactivés pour l'instant.",
+  pas_soi_meme: "Tu ne peux pas t'offrir un booster à toi-même 😉",
+  free_gift: "Il manque la mise à jour n° 6 dans Supabase.",
   player_album: "Il manque la mise à jour n° 2 dans Supabase."
 };
 const errText = e => { const m = String(e && e.message || e); const k = Object.keys(ERRORS).find(k => m.includes(k)); return k ? ERRORS[k] : "Problème de connexion. Vérifie ton réseau et réessaie."; };
@@ -749,6 +767,7 @@ function fmtDelay(ms) {
   return `${m} min ${String(sec).padStart(2, "0")} s`;
 }
 function renderReserve() {
+  if (typeof renderFreeGift === "function") renderFreeGift();
   const now = Date.now(), p = $("pips"), CAP = state.cap;
   if (state.nextAt && now >= state.nextAt) refreshState();
   let html = "";
@@ -776,7 +795,7 @@ function renderReserve() {
 function renderLegend() {
   $("legend").innerHTML = ["gadz", ...RORDER].map(r => `<li><span class="rarity rl-${r}" aria-hidden="true"></span>${RLABEL[r]}</li>`).join("");
 }
-function renderAll() { renderInstall(); renderReserve(); renderProgress(); renderFilters(); renderAlbum(); if (!$("page-collec").hidden) renderBoard(); }
+function renderAll() { renderInstall(); renderFreeGift(); if (TOKEN && $("fg-who").options.length < 2) loadGiftList(); renderReserve(); renderProgress(); renderFilters(); renderAlbum(); if (!$("page-collec").hidden) renderBoard(); }
 
 /* ================= Navigation entre les deux pages ================= */
 function showPage(name) {
@@ -1275,6 +1294,35 @@ $("login-form").addEventListener("submit", async e => {
 });
 $("logout-btn").onclick = () => { saveToken(null); state.owned = {}; renderAll(); setMode("old"); showLogin("Connecte-toi avec ton pseudo et ton code."); };
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshState(); });
+
+/* ================= Booster gratuit à offrir (1 par heure pendant le week-end) ================= */
+const fmtEvery = m => m < 60 ? `${Math.round(m)} min` : m < 1440 ? `${Math.round(m / 60)} h` : m === 1440 ? "jour" : `${Math.round(m / 1440)} jours`;
+function renderFreeGift() {
+  const box = $("freegift"); box.hidden = !state.freeOn || !TOKEN;
+  if (box.hidden) return;
+  const wait = state.freeNext && state.freeNext > Date.now();
+  $("fg-go").disabled = !!wait || !$("fg-who").value; $("fg-who").disabled = !!wait;
+  $("fg-info").textContent = wait ? `Prochain cadeau possible dans ${fmtDelay(state.freeNext - Date.now())}`
+    : `Gratuit, il ne te coûte rien · un cadeau par ${fmtEvery(state.freeMin)}`;
+}
+async function loadGiftList() {
+  try {
+    const rows = await rpc("leaderboard", {}), sel = $("fg-who"), keep = sel.value;
+    sel.innerHTML = `<option value="">Choisis un joueur…</option>` + rows.filter(r => r.pseudo !== state.pseudo)
+      .sort((a, b) => a.pseudo.localeCompare(b.pseudo, "fr", { sensitivity: "base" }))
+      .map(r => `<option value="${esc(r.pseudo)}">${esc(r.pseudo)}</option>`).join("");
+    sel.value = keep; renderFreeGift();
+  } catch (e) {}
+}
+$("fg-who").addEventListener("focus", loadGiftList);
+$("fg-who").addEventListener("change", renderFreeGift);
+$("fg-go").addEventListener("click", async () => {
+  const who = $("fg-who").value; if (!who) return;
+  $("fg-go").disabled = true;
+  try { applyState(await rpc("free_gift", { p_token: TOKEN, p_pseudo: who })); $("fg-who").value = ""; renderAll(); toast(`🎁 Booster offert à ${who} !`); }
+  catch (e) { toast(errText(e)); refreshState(); }
+  renderFreeGift();
+});
 
 /* ================= Ajout à l'écran d'accueil ================= */
 // Android (Chrome, Samsung) : vrai bouton « Ajouter ». iPhone : explication (Apple ne permet pas de bouton).

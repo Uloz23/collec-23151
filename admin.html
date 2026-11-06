@@ -212,7 +212,10 @@ td.num { font-variant-numeric: tabular-nums; }
         <label for="s-wend">Fin du week-end<input id="s-wend" type="datetime-local"></label>
         <label for="s-god">God pack : 1 booster sur<input id="s-god" type="number" min="1"></label>
         <label for="s-welcome">Boosters de bienvenue<input id="s-welcome" type="number" min="0" max="10"></label>
+        <label for="s-fgw">Cadeau entre joueurs : 1 toutes les (min), pendant le week-end<input id="s-fgw" type="number" min="1"></label>
+        <label for="s-fgo">Cadeau entre joueurs : 1 toutes les (min), hors week-end<input id="s-fgo" type="number" min="1"></label>
       </div>
+      <label class="check"><input type="checkbox" id="s-fgon"> Les joueurs peuvent s'offrir des boosters gratuits (1440 min = 1 par jour)</label>
       <details><summary class="muted">Réglages avancés (probabilités, en JSON)</summary><textarea id="s-json" rows="14" style="font-family:ui-monospace,monospace;font-size:13px"></textarea></details>
       <div class="row"><button class="btn primary" id="s-save" type="button">Enregistrer les réglages</button></div>
       <p class="status" id="s-status" role="status"></p>
@@ -593,6 +596,7 @@ async function loadSettings() {
   $("s-cap").value = settings.cap; $("s-period").value = settings.period_min; $("s-wperiod").value = settings.weekend_period_min;
   $("s-wstart").value = toLocal(settings.weekend_start); $("s-wend").value = toLocal(settings.weekend_end);
   $("s-god").value = Math.round(1 / settings.god_rate); $("s-welcome").value = settings.welcome_gifts;
+  $("s-fgw").value = settings.free_gift_weekend_min ?? 60; $("s-fgo").value = settings.free_gift_min ?? 1440; $("s-fgon").checked = settings.free_gift_on ?? true;
   $("s-json").value = JSON.stringify({ slots: settings.slots, god_slots: settings.god_slots, variants: settings.variants }, null, 2);
 }
 $("s-save").onclick = async () => {
@@ -601,7 +605,8 @@ $("s-save").onclick = async () => {
   const data = { ...settings, ...adv,
     cap: +$("s-cap").value, period_min: +$("s-period").value, weekend_period_min: +$("s-wperiod").value,
     weekend_start: new Date($("s-wstart").value).toISOString(), weekend_end: new Date($("s-wend").value).toISOString(),
-    god_rate: 1 / Math.max(1, +$("s-god").value), welcome_gifts: +$("s-welcome").value };
+    god_rate: 1 / Math.max(1, +$("s-god").value), welcome_gifts: +$("s-welcome").value,
+    free_gift_on: $("s-fgon").checked, free_gift_weekend_min: Math.max(1, +$("s-fgw").value || 60), free_gift_min: Math.max(1, +$("s-fgo").value || 1440) };
   const { error } = await SB.from("settings").update({ data }).eq("id", 1);
   if (error) return say($("s-status"), "Erreur : " + error.message, false);
   settings = data; say($("s-status"), "Réglages enregistrés. Ils s'appliquent dès le prochain booster.");
