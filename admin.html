@@ -163,12 +163,14 @@ td.num { font-variant-numeric: tabular-nums; }
           <div class="cur landscape" id="m-normale"></div>
           <label class="btn" style="text-align:center">Prendre ou choisir une photo<input type="file" accept="image/*" id="f-normale" hidden></label>
           <button class="btn" type="button" id="r-normale">Recadrer la photo actuelle</button>
+          <button class="btn danger" type="button" id="x-normale">Retirer cette photo</button>
         </div>
         <div class="media">
           <h2>Photo pleine carte</h2>
           <div class="cur portrait" id="m-textless"></div>
           <label class="btn" style="text-align:center">Prendre ou choisir une photo<input type="file" accept="image/*" id="f-textless" hidden></label>
           <button class="btn" type="button" id="r-textless">Recadrer la photo actuelle</button>
+          <button class="btn danger" type="button" id="x-textless">Retirer cette photo</button>
         </div>
         <div class="media">
           <h2>Sons</h2>
@@ -467,6 +469,20 @@ async function recrop(variant) {
   say($("e-status"), "Aucune photo à recadrer pour l'instant.", false);
 }
 $("r-normale").onclick = () => recrop("normale");
+// Retirer une photo : la carte revient à l'illustration par défaut (2 appuis pour confirmer)
+async function removePhoto(variant) {
+  const b = $("x-" + variant), field = variant === "normale" ? "photo_normale" : "photo_textless";
+  if (!current || !current[field]) return say($("e-status"), "Il n'y a pas de photo à retirer ici.", false);
+  if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Confirmer le retrait"; setTimeout(() => { delete b.dataset.armed; b.textContent = "Retirer cette photo"; }, 4000); return; }
+  delete b.dataset.armed; b.textContent = "Retirer cette photo";
+  try {
+    current = await setCardField(current.id, field, null);
+    try { await SB.storage.from(CFG.bucket).remove([originalPath(current.id, variant)]); } catch (e) {}
+    showMedia(); say($("e-status"), "Photo retirée : la carte affiche de nouveau l'illustration par défaut.");
+  } catch (e) { say($("e-status"), "Erreur : " + e.message, false); }
+}
+$("x-normale").onclick = () => removePhoto("normale");
+$("x-textless").onclick = () => removePhoto("textless");
 $("r-textless").onclick = () => recrop("textless");
 function loadImage(file) {
   return new Promise((res, rej) => { const url = URL.createObjectURL(file); const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = url; });
