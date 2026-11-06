@@ -335,13 +335,16 @@ $("p-body").addEventListener("click", async e => {
 });
 
 /* ---------- Cartes ---------- */
-// Ordre de l'album : par type, puis les Gadz du plus jeune au plus ancien (selon la prom's), puis par code.
+// Ordre de l'album : par type ; les Gadz du plus jeune au plus ancien (selon la prom's) ; les autres de la moins rare à la plus rare, puis par ordre alphabétique.
 // Le numéro affiché sur la carte en découle : une carte ajoutée plus tard se range à sa place.
 const TYPE_ORDER = ["Gadz", "Tabagn's", "Chant", "Trad's"];
 const promOf = c => { const s = c.sub || ""; if (s.startsWith(".")) return 1e6; const m = /(\d+)\s*$/.exec(s); return m ? +m[1] : -1; };
 function sortCards(list) {
   const t = c => { const i = TYPE_ORDER.indexOf(c.type); return i < 0 ? 99 : i; };
-  return list.slice().sort((a, b) => t(a) - t(b) || (a.type === "Gadz" ? promOf(b) - promOf(a) || (a.kind ? 1 : 0) - (b.kind ? 1 : 0) : 0) || a.id - b.id);
+  const r = c => { const i = ["commune", "peu-commune", "rare", "mythique"].indexOf(c.rarity); return i < 0 ? 9 : i; };
+  return list.slice().sort((a, b) => t(a) - t(b) || (a.type === "Gadz"
+    ? promOf(b) - promOf(a) || (a.kind ? 1 : 0) - (b.kind ? 1 : 0) || a.id - b.id
+    : r(a) - r(b) || a.name.localeCompare(b.name, "fr", { sensitivity: "base", numeric: true }) || a.id - b.id));
 }
 let cards = [], current = null;
 async function loadCards() {
