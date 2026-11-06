@@ -332,11 +332,11 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .head { align-items: center; }
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
   padding: 8px max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
   background: rgba(18,13,12,.94); border-top: 1px solid var(--line); backdrop-filter: blur(8px);
 }
-.tab { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 6px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; font-family: var(--f-label); font-weight: 600; font-size: 16px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tab { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 2px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; font-family: var(--f-label); font-weight: 600; font-size: clamp(12px, 3.9vw, 15px); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
 .tab[aria-current="page"] { background: rgba(212,178,106,.14); color: var(--gold-soft); }
 .tab-ico { font-size: 20px; line-height: 1; }
 .tab-badge { position: absolute; top: 4px; left: calc(50% + 22px); min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: grid; place-items: center; background: var(--fams); color: #fff; font-size: 13px; letter-spacing: 0; }
@@ -358,7 +358,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .login-form .btn-primary { margin-top: 10px; width: 100%; }
 .login-err { margin: 4px 0 0; min-height: 20px; color: #ff9b8f; font-size: 15px; }
 .login-note { margin: 4px 0 0; font-size: 14px; color: var(--muted); text-align: center; }
-.board { display: grid; gap: 10px; margin-top: 18px; }
+.board { display: grid; gap: 10px; }
 .board-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; counter-reset: rk; }
 .board-list li { counter-increment: rk; display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 10px; background: rgba(241,223,174,.04); border: 1px solid rgba(212,178,106,.12); font-variant-numeric: tabular-nums; }
 .board-list li::before { content: counter(rk); font-family: var(--f-label); font-weight: 700; font-size: 17px; color: var(--gold); }
@@ -466,7 +466,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 
   <!-- Page 2 : la collection -->
   <section class="page page-collec" id="page-collec" aria-label="Ma collec'" hidden>
-    <div class="peek-bar" id="peek-bar" hidden><span>Album de <b id="peek-name"></b></span><button class="btn-ghost" id="peek-close" type="button">Revenir à ma collec'</button></div>
+    <div class="peek-bar" id="peek-bar" hidden><span>Album de <b id="peek-name"></b></span><button class="btn-ghost" id="peek-close" type="button">← Classement</button></div>
     <div class="progress">
       <div class="progress-line"><span id="prog-cards">0 / 0 cartes</span><span id="prog-var">0 variante</span></div>
       <div class="meter"><i id="prog-bar"></i></div>
@@ -474,7 +474,11 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
     <nav class="filters" id="filters" aria-label="Filtrer par type"></nav>
     <section class="album" id="album" aria-label="Album"></section>
     <ul class="legend" aria-label="Raretés" id="legend"></ul>
-    <section class="board" aria-labelledby="board-title">
+  </section>
+
+  <!-- Page 3 : la fam's (classement et albums des autres) -->
+  <section class="page page-fams" id="page-fams" aria-labelledby="board-title" hidden>
+    <section class="board">
       <h2 class="page-title" id="board-title">Classement de la fam's</h2>
       <p class="board-hint">Touche un pseudo pour voir son album</p>
       <ol class="board-list" id="board"></ol>
@@ -485,6 +489,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 <nav class="tabbar" aria-label="Pages">
   <button type="button" class="tab" id="tab-boosters" data-page="boosters" aria-current="page"><span class="tab-ico" aria-hidden="true">✦</span>Boosters<span class="tab-badge" id="tab-badge" hidden></span></button>
   <button type="button" class="tab" id="tab-collec" data-page="collec"><span class="tab-ico" aria-hidden="true">▦</span>Ma collec'<span class="tab-sub" id="tab-sub"></span></button>
+  <button type="button" class="tab" id="tab-fams" data-page="fams"><span class="tab-ico" aria-hidden="true">♜</span>La fam's<span class="tab-sub" id="tab-fams-sub"></span></button>
 </nav>
 
 <div class="overlay" id="opening" hidden role="dialog" aria-modal="true" aria-label="Ouverture du booster">
@@ -795,17 +800,18 @@ function renderReserve() {
 function renderLegend() {
   $("legend").innerHTML = ["gadz", ...RORDER].map(r => `<li><span class="rarity rl-${r}" aria-hidden="true"></span>${RLABEL[r]}</li>`).join("");
 }
-function renderAll() { renderInstall(); renderFreeGift(); if (TOKEN && $("fg-who").options.length < 2) loadGiftList(); renderReserve(); renderProgress(); renderFilters(); renderAlbum(); if (!$("page-collec").hidden) renderBoard(); }
+function renderAll() { renderInstall(); renderFreeGift(); if (TOKEN && $("fg-who").options.length < 2) loadGiftList(); renderReserve(); renderProgress(); renderFilters(); renderAlbum(); if (!$("page-fams").hidden) renderBoard(); }
 
 /* ================= Navigation entre les deux pages ================= */
 function showPage(name) {
-  if (name !== "collec") name = "boosters";
-  $("page-boosters").hidden = name !== "boosters";
-  $("page-collec").hidden = name !== "collec";
-  ["boosters", "collec"].forEach(n => { const t = $("tab-" + n); if (n === name) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
+  if (name !== "collec" && name !== "fams") name = "boosters";
+  ["boosters", "collec", "fams"].forEach(n => { $("page-" + n).hidden = n !== name; });
+  // L'album d'un autre joueur s'affiche dans la page collection, mais il appartient à l'onglet « La fam's »
+  const tab = name === "collec" && peek ? "fams" : name;
+  ["boosters", "collec", "fams"].forEach(n => { const t = $("tab-" + n); if (n === tab) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
   try { if (location.hash !== "#" + name) history.replaceState(null, "", "#" + name); } catch (e) {}
   window.scrollTo(0, 0);
-  if (name === "collec") renderBoard();
+  if (name === "fams") renderBoard();
 }
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => showPage(t.dataset.page)));
 window.addEventListener("hashchange", () => showPage(location.hash.slice(1)));
@@ -1206,24 +1212,26 @@ function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add
 async function renderBoard() {
   try {
     const rows = await rpc("leaderboard", {});
+    const rank = rows.findIndex(r => r.pseudo === state.pseudo);
+    $("tab-fams-sub").textContent = rank < 0 ? "" : `${rank + 1}${rank ? "e" : "er"} / ${rows.length}`;
     $("board").innerHTML = rows.map(r => `<li tabindex="0" role="button" data-pseudo="${esc(r.pseudo)}" class="peek${r.pseudo === state.pseudo ? " me" : ""}${peek && r.pseudo === peek.pseudo ? " seen" : ""}"><span class="bn">${esc(r.pseudo)}</span><span class="bs">${r.cartes} / ${CARDS.length}${r.variantes ? ` · ✦ ${r.variantes}` : ""}</span></li>`).join("") || "<li><span class=\"bs\">Personne n'a encore ouvert de booster.</span></li>";
   } catch (e) { $("board").innerHTML = `<li><span class="bs">Classement indisponible pour l'instant.</span></li>`; }
 }
-document.querySelector("#tab-collec").addEventListener("click", () => { if (peek) endPeek(); });
-document.querySelector("#tab-boosters").addEventListener("click", () => { if (peek) endPeek(); });
-function endPeek() { peek = null; $("peek-bar").hidden = true; renderProgress(); renderFilters(); renderAlbum(); renderBoard(); }
+// Les clics sur les onglets passent avant showPage (écouteurs ajoutés plus haut) : on referme l'album de l'autre d'abord
+["tab-collec", "tab-boosters", "tab-fams"].forEach(id => $(id).addEventListener("click", () => { if (peek) { endPeek(); showPage($(id).dataset.page); } }, true));
+function endPeek() { peek = null; $("peek-bar").hidden = true; renderProgress(); renderFilters(); renderAlbum(); }
 async function startPeek(pseudo) {
-  if (pseudo === state.pseudo) { if (peek) endPeek(); return; }
+  if (pseudo === state.pseudo) { if (peek) endPeek(); showPage("collec"); return; }
   try {
     const r = await rpc("player_album", { p_token: TOKEN, p_pseudo: pseudo });
     const owned = {}; (r.owned || []).forEach(([cid, v, n]) => { owned[cid + ":" + v] = n; });
     peek = { pseudo: r.pseudo, owned };
     $("peek-name").textContent = r.pseudo; $("peek-bar").hidden = false;
-    renderProgress(); renderFilters(); renderAlbum(); renderBoard();
-    window.scrollTo(0, 0);
+    renderProgress(); renderFilters(); renderAlbum();
+    showPage("collec");
   } catch (e) { toast(errText(e)); }
 }
-$("peek-close").addEventListener("click", endPeek);
+$("peek-close").addEventListener("click", () => { endPeek(); showPage("fams"); });
 $("board").addEventListener("click", e => { const li = e.target.closest("li[data-pseudo]"); if (li) startPeek(li.dataset.pseudo); });
 $("board").addEventListener("keydown", e => { if (e.key !== "Enter" && e.key !== " ") return; const li = e.target.closest("li[data-pseudo]"); if (li) { e.preventDefault(); startPeek(li.dataset.pseudo); } });
 
