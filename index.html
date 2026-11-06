@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#120d0c">
 <link rel="icon" href="assets/rarete-gadz.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Collec' 23-151">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Collec' 23-151</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@500;600;700&display=swap">
 <style>
@@ -389,6 +395,10 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 #apercu figure { margin: 0; display: grid; gap: 6px; }
 #apercu figcaption { text-align: center; font-family: var(--f-label); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 #apercu .empty { grid-column: 1 / -1; text-align: center; color: var(--muted); font-family: var(--f-label); }
+.install { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 560px; padding: 10px 12px 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(241,223,174,.05); }
+.install-txt { flex: 1; text-align: left; font-family: var(--f-body); font-size: 14px; line-height: 1.35; color: var(--gold-soft); }
+.install-txt b { color: var(--gold); }
+.install-x { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 16px; cursor: pointer; }
 </style>
 
 <div class="wrap">
@@ -406,6 +416,11 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 
   <!-- Page 1 : les boosters -->
   <section class="page page-boosters" id="page-boosters" aria-labelledby="reserve-title">
+    <div class="install" id="install" hidden>
+      <span class="install-txt" id="install-txt">Garde la Collec' sur ton écran d'accueil, comme une appli.</span>
+      <button class="btn-ghost" id="install-go" type="button" hidden>Ajouter</button>
+      <button class="install-x" id="install-x" type="button" aria-label="Masquer">✕</button>
+    </div>
     <h2 class="page-title" id="reserve-title">Tes boosters</h2>
     <button class="pack big-pack" id="big-pack" type="button" aria-label="Ouvrir un booster">
       <div class="pack-top"></div>
@@ -761,7 +776,7 @@ function renderReserve() {
 function renderLegend() {
   $("legend").innerHTML = ["gadz", ...RORDER].map(r => `<li><span class="rarity rl-${r}" aria-hidden="true"></span>${RLABEL[r]}</li>`).join("");
 }
-function renderAll() { renderReserve(); renderProgress(); renderFilters(); renderAlbum(); if (!$("page-collec").hidden) renderBoard(); }
+function renderAll() { renderInstall(); renderReserve(); renderProgress(); renderFilters(); renderAlbum(); if (!$("page-collec").hidden) renderBoard(); }
 
 /* ================= Navigation entre les deux pages ================= */
 function showPage(name) {
@@ -1260,6 +1275,27 @@ $("login-form").addEventListener("submit", async e => {
 });
 $("logout-btn").onclick = () => { saveToken(null); state.owned = {}; renderAll(); setMode("old"); showLogin("Connecte-toi avec ton pseudo et ton code."); };
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshState(); });
+
+/* ================= Ajout à l'écran d'accueil ================= */
+// Android (Chrome, Samsung) : vrai bouton « Ajouter ». iPhone : explication (Apple ne permet pas de bouton).
+let installEvt = null;
+const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const installHidden = () => { try { return localStorage.getItem("collec23151-install-ok") === "1"; } catch (e) { return false; } };
+function renderInstall() {
+  const box = $("install"); if (!box) return;
+  if (standalone() || installHidden() || !TOKEN) { box.hidden = true; return; }
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (installEvt) { $("install-txt").innerHTML = "Garde la Collec' sur ton écran d'accueil, comme une appli."; $("install-go").hidden = false; }
+  else if (ios) { $("install-txt").innerHTML = "Pour garder la Collec' sur ton écran d'accueil : touche <b>Partager</b> (le carré avec la flèche) puis <b>« Sur l'écran d'accueil »</b>."; $("install-go").hidden = true; }
+  else if (/android/i.test(navigator.userAgent)) { $("install-txt").innerHTML = "Pour garder la Collec' sur ton écran d'accueil : menu <b>⋮</b> du navigateur, puis <b>« Ajouter à l'écran d'accueil »</b>."; $("install-go").hidden = true; }
+  else { box.hidden = true; return; }
+  box.hidden = false;
+}
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvt = e; renderInstall(); });
+window.addEventListener("appinstalled", () => { try { localStorage.setItem("collec23151-install-ok", "1"); } catch (e) {} renderInstall(); });
+$("install-go").addEventListener("click", async () => { if (!installEvt) return; installEvt.prompt(); try { await installEvt.userChoice; } catch (e) {} installEvt = null; renderInstall(); });
+$("install-x").addEventListener("click", () => { try { localStorage.setItem("collec23151-install-ok", "1"); } catch (e) {} renderInstall(); });
+if ("serviceWorker" in navigator && !/[?&]apercu/.test(location.search)) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 /* ================= Démarrage ================= */
 if (/[?&]apercu/.test(location.search)) {
