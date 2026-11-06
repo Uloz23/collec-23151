@@ -118,6 +118,7 @@ td.num { font-variant-numeric: tabular-nums; }
       <div class="row">
         <button class="btn primary" id="g-selected" type="button">Offrir aux joueurs cochés</button>
         <button class="btn" id="g-all" type="button">Offrir à tout le monde</button>
+        <button class="btn danger" id="p-reset" type="button">Remettre à zéro les joueurs cochés</button>
       </div>
       <p class="status" id="g-status" role="status"></p>
       <div class="scroll">
@@ -288,6 +289,18 @@ $("g-selected").onclick = () => {
   const ids = [...document.querySelectorAll(".p-sel:checked")].map(c => c.closest("tr").dataset.id);
   if (!ids.length) return say($("g-status"), "Coche au moins un joueur.", false);
   gift(ids);
+};
+// Remise à zéro : cartes et boosters effacés, pseudo et code gardés (2 appuis pour confirmer)
+$("p-reset").onclick = async () => {
+  const b = $("p-reset"), rows = [...document.querySelectorAll(".p-sel:checked")].map(c => c.closest("tr"));
+  if (!rows.length) return say($("g-status"), "Coche d'abord le ou les joueurs à remettre à zéro.", false);
+  const names = rows.map(r => players.find(x => x.id === r.dataset.id).pseudo).join(", ");
+  if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = `Confirmer : tout effacer pour ${names}`; setTimeout(() => { delete b.dataset.armed; b.textContent = "Remettre à zéro les joueurs cochés"; }, 5000); return; }
+  delete b.dataset.armed; b.textContent = "Remettre à zéro les joueurs cochés";
+  const { data, error } = await SB.rpc("admin_reset_players", { p_ids: rows.map(r => r.dataset.id) });
+  if (error) return say($("g-status"), "Erreur : " + error.message + (error.message.includes("admin_reset_players") ? " (as-tu installé la mise à jour n° 7 ?)" : ""), false);
+  say($("g-status"), `${data} compte${data > 1 ? "s" : ""} remis à zéro (${names}) : plus aucune carte, juste le booster de bienvenue. Pseudo et code inchangés.`);
+  loadPlayers();
 };
 let allArmed = false;
 $("g-all").onclick = () => {
