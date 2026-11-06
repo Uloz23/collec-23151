@@ -178,6 +178,16 @@ button { font: inherit; color: inherit; }
 .v-doree .bar { background: linear-gradient(180deg, #fffaf0, #e9c768); }
 .v-doree .art { border-color: #fff1c2; }
 .v-doree .frame { box-shadow: 0 0 0 .4cqw rgba(255,226,140,.55), inset 0 0 4cqw rgba(255,214,110,.35); }
+/* Dorées : scintillements (petites étoiles qui s'allument au hasard) et reflet qui balaie le cadre or */
+.sparkles { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.sparkles i { position: absolute; width: 14cqw; aspect-ratio: 1; margin: -7cqw 0 0 -7cqw; opacity: 0;
+  filter: drop-shadow(0 0 1cqw #fff) drop-shadow(0 0 2.2cqw rgba(255,190,60,.95)); animation: twinkle var(--d, 2.4s) ease-in-out var(--w, 0s) infinite; }
+.sparkles i::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, #fff 0 30%, #fff3c4 60%, #ffd56a);
+  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%); }
+.sparkles i.s { width: 9cqw; margin: -4.5cqw 0 0 -4.5cqw; }
+@keyframes twinkle { 0%, 62%, 100% { opacity: 0; transform: scale(.2) rotate(0deg); } 76% { opacity: 1; transform: scale(1) rotate(25deg); } 88% { opacity: .2; transform: scale(.5) rotate(45deg); } }
+.v-doree .card-in::before { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,.95) 50%, transparent 60%) 0 0 / 300% 100% no-repeat; animation: glint 3.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .sparkles { display: none; } .v-doree .card-in::before { animation: none; } }
 
 /* Reflet brillant */
 .foil {
@@ -626,6 +636,17 @@ function textboxHTML(card) {
 // Fond neutre des Gadz sans photo
 const GADZ_DEFAULT = { normale: "assets/gadz-defaut-normale.jpg", textless: "assets/gadz-defaut-textless.jpg?v=2" };
 const photoOf = c => c.photo || (c.type === "Gadz" && !c.kind ? GADZ_DEFAULT : null);
+// Étoiles des dorées : surtout sur le cadre or, quelques-unes sur l'image
+function sparklesHTML() {
+  let h = "";
+  for (let i = 0; i < 13; i++) {
+    const edge = i < 8, side = i % 4;
+    const x = edge ? (side === 0 ? 3 : side === 1 ? 97 : 5 + Math.random() * 90) : 15 + Math.random() * 70;
+    const y = edge ? (side === 2 ? 2 : side === 3 ? 98 : 5 + Math.random() * 90) : 12 + Math.random() * 60;
+    h += `<i class="${i % 3 ? "s" : ""}" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%;--d:${(1.8 + Math.random() * 1.8).toFixed(2)}s;--w:${(-Math.random() * 3).toFixed(2)}s"></i>`;
+  }
+  return `<div class="sparkles" aria-hidden="true">${h}</div>`;
+}
 function cardEl(card, variant = "normale") {
   const el = document.createElement("div");
   // Les dorées sont aussi en pleine carte (mise en page textless + cadre or)
@@ -638,7 +659,7 @@ function cardEl(card, variant = "normale") {
     <div class="bar mid"><span class="type">${hasAudio(card) ? "♪ " : ""}${card.kind ? esc(card.type) + " – " + esc(card.kind) : esc(card.type) + (card.sub ? " · " + esc(card.sub) : "")}</span><span class="rarity rl-${card.rarity}" role="img" aria-label="${RLABEL[card.rarity]}"></span></div>
     ${textboxHTML(card)}
     <div class="numbering"><span>${card.fams ? esc(card.fams) : "23-151"}</span><span>${pad(card.num || card.id)} / ${pad(CARDS.length)}</span></div>
-  </div></div><div class="foil" aria-hidden="true"></div>`;
+  </div></div><div class="foil" aria-hidden="true"></div>${variant === "doree" ? sparklesHTML() : ""}`;
   return el;
 }
 function backEl() {
