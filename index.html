@@ -249,6 +249,29 @@ button { font: inherit; color: inherit; }
 @keyframes rays { from { transform: rotate(0deg) scale(.7); } to { transform: rotate(30deg) scale(1.15); } }
 .godflash { position: fixed; inset: 0; pointer-events: none; z-index: 60; background: radial-gradient(circle at 50% 45%, rgba(255,246,214,.95), rgba(232,195,90,.55) 30%, rgba(108,96,157,.35) 55%, transparent 75%); animation: godflash 1.6s ease-out forwards; }
 @keyframes godflash { 0% { opacity: 0; transform: scale(.6); } 20% { opacity: 1; } 100% { opacity: 0; transform: scale(1.4); } }
+/* Booster spécial : double tour sur lui-même, avec un halo doré (dorée) ou arc-en-ciel (textless) */
+.pack.spin { animation: packspin 1.45s cubic-bezier(.45,.05,.25,1) both; }
+@keyframes packspin {
+  0% { transform: perspective(900px) rotateY(0) scale(1); }
+  15% { transform: perspective(900px) rotateY(0) scale(.94) translateY(6px); }
+  70% { transform: perspective(900px) rotateY(720deg) scale(1.14); }
+  85% { transform: perspective(900px) rotateY(720deg) scale(1.08); }
+  100% { transform: perspective(900px) rotateY(720deg) scale(1.1); }
+}
+.pack.sp-gold { animation: packspin 1.45s cubic-bezier(.45,.05,.25,1) both, goldhalo 1.5s ease-in-out infinite alternate; }
+.pack.sp-tl { animation: packspin 1.45s cubic-bezier(.45,.05,.25,1) both, rainbowhalo 1.2s linear infinite; }
+.pack.sp-gold:not(.spin) { animation: goldhalo 1.5s ease-in-out infinite alternate; transform: scale(1.1); }
+.pack.sp-tl:not(.spin) { animation: rainbowhalo 1.2s linear infinite; transform: scale(1.1); }
+@keyframes goldhalo { from { filter: drop-shadow(0 0 10px #ffe9a8) drop-shadow(0 0 26px rgba(255,190,60,.7)); } to { filter: drop-shadow(0 0 18px #fff3c4) drop-shadow(0 0 54px rgba(255,190,60,1)); } }
+@keyframes rainbowhalo {
+  0% { filter: drop-shadow(0 0 14px #ff4fa3) drop-shadow(0 0 36px rgba(255,79,163,.7)); }
+  25% { filter: drop-shadow(0 0 14px #ffd23f) drop-shadow(0 0 36px rgba(255,210,63,.7)); }
+  50% { filter: drop-shadow(0 0 14px #3ef08f) drop-shadow(0 0 36px rgba(62,240,143,.7)); }
+  75% { filter: drop-shadow(0 0 14px #3fb6ff) drop-shadow(0 0 36px rgba(63,182,255,.7)); }
+  100% { filter: drop-shadow(0 0 14px #ff4fa3) drop-shadow(0 0 36px rgba(255,79,163,.7)); }
+}
+.ov-hint.gold { color: #ffe9a8; text-shadow: 0 0 12px rgba(255,200,80,.8); }
+@media (prefers-reduced-motion: reduce) { .pack.spin { animation: none; } }
 .pack.torn.to-left .pack-top { transform-origin: 100% 100%; transform: translate(-35%, -140%) rotate(28deg); }
 .pack.torn .pack-body { transform: translateY(70%) scale(.92); opacity: 0; }
 
@@ -918,6 +941,8 @@ const sfx = {
     const a = ac(); if (!a) return; const t = a.currentTime + .04;
     notes.forEach((f, i) => { tone(a, a.destination, f, t + i * step, .9, vol, "triangle"); tone(a, a.destination, f * 2, t + i * step, .5, vol * .25); });
   },
+  // Montée de notes pendant que le booster spécial tourbillonne
+  spin(kind) { this.chime(kind === "gold" ? [392, 494, 587, 784, 988, 1175, 1568] : [440, 554, 659, 880, 1109, 1319], .16, .14); },
   glow(r) { if (r === 1) this.chime([1047, 1319], .06, .07); if (r === 2) this.chime([784, 1047], .07, .1); if (r === 3) this.chime([659, 988, 1319], .07, .12); },
   rare() { this.chime([784, 988, 1319], .08, .18); },
   mythique() { this.chime([659, 880, 1109, 1319, 1760], .07, .2); },
@@ -1088,6 +1113,19 @@ $("ov-stage").addEventListener("pointercancel", e => endCut(e, true));
 
 function tearPack(dir = 1) {
   if (!session || session.phase !== "pack") return;
+  // Booster spécial (textless ou dorée dedans) : il tourbillonne et s'illumine avant de s'ouvrir
+  const special = session.pulls.some(p => p.variant === "doree") ? "gold" : session.pulls.some(p => p.variant === "textless") ? "tl" : null;
+  if (special && !session.spun) {
+    session.spun = true; session.phase = "spinning";
+    const pk0 = $("ov-stage").querySelector(".pack");
+    pk0.style.setProperty("--cut", "0%");
+    pk0.classList.add("spin", special === "gold" ? "sp-gold" : "sp-tl");
+    setHint(special === "gold" ? "Ce booster brille d'une drôle de lueur dorée…" : "Ce booster scintille de toutes les couleurs…", special === "gold" ? "big gold" : "big");
+    buzz([40, 60, 40, 60, 40, 60, 120]);
+    sfx.spin && sfx.spin(special);
+    setTimeout(() => { if (!session || session.phase !== "spinning") return; pk0.classList.remove("spin"); session.phase = "pack"; tearPack(dir); }, 1500);
+    return;
+  }
   session.phase = "tearing";
   const st = $("ov-stage"), pk = st.querySelector(".pack");
   pk.style.setProperty("--cut", "100%");
