@@ -51,6 +51,16 @@ table { width: 100%; border-collapse: collapse; font-size: 16px; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid rgba(212,178,106,.12); vertical-align: middle; }
 th { font-family: var(--f-label); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; font-size: 13px; color: var(--muted); }
 td.num { font-variant-numeric: tabular-nums; }
+/* Bilan */
+#st-body { display: grid; gap: 22px; }
+.stgroup { display: grid; gap: 10px; }
+.stgroup h3 { margin: 6px 0 0; font-family: var(--f-label); font-weight: 600; font-size: 15px; letter-spacing: .06em; color: var(--gold-soft); }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.stat { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+.stat b { font-family: var(--f-label); font-size: 28px; color: var(--gold-soft); font-variant-numeric: tabular-nums; line-height: 1; }
+.stat span { font-family: var(--f-label); font-size: 13px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.chip { display: inline-block; margin: 0 4px 6px 0; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-family: var(--f-label); font-size: 15px; color: var(--muted); }
+.chip b { color: var(--gold-soft); }
 .scroll { overflow-x: auto; }
 .pseudo { font-family: var(--f-gadz); font-size: 19px; color: var(--gold-soft); }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 10px; }
@@ -106,6 +116,7 @@ td.num { font-variant-numeric: tabular-nums; }
       <button class="tab" type="button" data-tab="cards" aria-pressed="false">Cartes</button>
       <button class="tab" type="button" data-tab="import" aria-pressed="false">Import en masse</button>
       <button class="tab" type="button" data-tab="settings" aria-pressed="false">Réglages</button>
+      <button class="tab" type="button" data-tab="stats" aria-pressed="false">Bilan</button>
     </nav>
 
     <!-- Joueurs -->
@@ -202,6 +213,13 @@ td.num { font-variant-numeric: tabular-nums; }
       <div class="list" id="i-log"></div>
     </section>
 
+    <!-- Bilan (réservé à l'admin) -->
+    <section class="panel" id="tab-stats" hidden style="margin-top:14px">
+      <div class="top"><h2>Bilan</h2><button class="btn" id="st-refresh" type="button">Actualiser</button></div>
+      <p class="muted">Visible seulement ici. Les comptes test ne sont pas comptés.</p>
+      <div id="st-body"><p class="muted">Chargement…</p></div>
+    </section>
+
     <!-- Réglages -->
     <section class="panel" id="tab-settings" hidden style="margin-top:14px">
       <h2>Réglages des boosters</h2>
@@ -257,10 +275,53 @@ $("login").addEventListener("submit", async e => {
 $("logout").onclick = async () => { await SB.auth.signOut(); location.reload(); };
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-pressed", String(x === t)));
-  ["players", "cards", "import", "settings"].forEach(n => $("tab-" + n).hidden = n !== t.dataset.tab);
+  ["players", "cards", "import", "settings", "stats"].forEach(n => $("tab-" + n).hidden = n !== t.dataset.tab);
   $("editor").hidden = true;
   if (t.dataset.tab === "players") loadPlayers();
+  if (t.dataset.tab === "stats") loadStats();
 });
+
+/* ---------- Bilan : échanges et boosters ---------- */
+const RAR = { gadz: "Gadz", commune: "Commune", "peu-commune": "Peu commune", rare: "Rare", mythique: "Mythique" };
+const VAR = { normale: "Normale", brillante: "Brillante", textless: "Full art", doree: "Dorée" };
+const STAT = { acceptee: "Acceptés", attente: "En attente", refusee: "Refusés", annulee: "Annulés", expiree: "Expirés", impossible: "Impossibles", modifiee: "Modifiés" };
+const tile = (n, l) => `<div class="stat"><b>${n}</b><span>${l}</span></div>`;
+const tbl = (head, rows, empty) => rows.length
+  ? `<div class="scroll"><table><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table></div>`
+  : `<p class="muted">${empty}</p>`;
+const cname = (n, r) => `<span class="pseudo" style="font-size:17px">${esc(n ?? "carte supprimée")}</span>${r ? ` <span class="muted">· ${esc(RAR[r] ?? r)}</span>` : ""}`;
+const vname = v => v && v !== "normale" ? ` <span class="muted">(${esc(VAR[v] ?? v)})</span>` : "";
+const split = (obj, labels, order) => Object.entries(obj).sort((a, b) => (order ? order.indexOf(a[0]) - order.indexOf(b[0]) : b[1] - a[1]))
+  .map(([k, n]) => `<span class="chip">${esc(labels[k] ?? k)} <b>${n}</b></span>`).join(" ") || `<span class="muted">–</span>`;
+async function loadStats() {
+  const { data, error } = await SB.rpc("admin_stats");
+  if (error) return $("st-body").innerHTML = `<p class="status bad">Erreur : ${esc(error.message)}${/admin_stats/.test(error.message) ? " (installe la mise à jour SQL n° 10)" : ""}</p>`;
+  const t = data.trades, b = data.boosters, tot = Object.values(b.by_rarity).reduce((a, n) => a + n, 0) || 1;
+  $("st-body").innerHTML = `
+    <div class="stgroup"><h2>Échanges</h2>
+      <div class="stats">${tile(t.by_status.acceptee ?? 0, "échanges faits")}${tile(t.total, "propositions")}${tile(t.by_status.attente ?? 0, "en attente")}</div>
+      <p>${split(t.by_status, STAT, Object.keys(STAT))}</p>
+      <h3>Cartes les plus échangées</h3>
+      ${tbl(["Carte", "Fois"], t.top_cards.map(c => `<tr><td>${cname(c.name, c.rarity)}</td><td class="num">${c.n}</td></tr>`), "Aucun échange accepté pour l'instant.")}
+      <h3>Plus gros échangeurs</h3>
+      ${tbl(["Joueur", "Faits", "Proposés", "Reçus"], t.top_traders.map(p => `<tr><td class="pseudo">${esc(p.pseudo)}</td><td class="num">${p.acceptes}</td><td class="num">${p.proposes}</td><td class="num">${p.recus}</td></tr>`), "Personne n'a encore proposé d'échange.")}
+      <h3>Derniers échanges</h3>
+      ${tbl(["Quand", "Échange"], t.last.map(x => `<tr><td class="muted">${when(x.at)}</td><td><b>${esc(x.from)}</b> donne ${esc(x.give)}${vname(x.give_v)} à <b>${esc(x.to)}</b> contre ${esc(x.want)}${vname(x.want_v)}</td></tr>`), "–")}
+    </div>
+    <div class="stgroup"><h2>Boosters</h2>
+      <div class="stats">${tile(b.total, "boosters ouverts")}${tile(b.cards, "cartes tirées")}${tile(b.players, "joueurs")}${tile(b.never, "cartes jamais sorties")}</div>
+      <h3>Par rareté</h3><p>${split(b.by_rarity, RAR, Object.keys(RAR))}</p>
+      <p class="muted">${Object.keys(RAR).filter(r => b.by_rarity[r]).map(r => `${RAR[r]} ${Math.round(b.by_rarity[r] / tot * 100)} %`).join(" · ")}</p>
+      <h3>Par version</h3><p>${split(b.by_variant, VAR, Object.keys(VAR))}</p>
+      <h3>Plus gros ouvreurs</h3>
+      ${tbl(["Joueur", "Boosters"], b.top_openers.map(p => `<tr><td class="pseudo">${esc(p.pseudo)}</td><td class="num">${p.n}</td></tr>`), "Aucun booster ouvert.")}
+      <h3>Cartes les plus tirées</h3>
+      ${tbl(["Carte", "Tirées"], b.top_cards.map(c => `<tr><td>${cname(c.name, c.rarity)}</td><td class="num">${c.n}</td></tr>`), "–")}
+      <h3>Beaux tirages (mythiques, full art, dorées)</h3>
+      ${tbl(["Quand", "Joueur", "Carte"], b.best.map(x => `<tr><td class="muted">${when(x.at)}</td><td class="pseudo">${esc(x.pseudo)}</td><td>${cname(x.name, x.rarity)}${vname(x.v)}</td></tr>`), "Pas encore de beau tirage.")}
+    </div>`;
+}
+$("st-refresh").onclick = loadStats;
 
 /* ---------- Joueurs ---------- */
 let players = [];
