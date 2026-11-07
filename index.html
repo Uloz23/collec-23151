@@ -648,6 +648,7 @@ async function loadCards() {
   if (error) throw error;
   if (st && st.data && st.data.edition) EDITION = st.data.edition;
   TRADE_SAME = !(st && st.data && st.data.trade_same_variant === false);
+  if (st && st.data && Array.isArray(st.data.trade_groups)) TRADE_GROUPS = st.data.trade_groups;
   CARDS = cards.map(mapCard);
   CARDS = sortCards(CARDS); CARDS.forEach((c, i) => { c.num = i + 1; });
 }
@@ -691,7 +692,7 @@ const ERRORS = {
   cadeau_ferme: "Les cadeaux entre joueurs sont désactivés pour l'instant.",
   pas_soi_meme: "Tu ne peux pas t'offrir un booster à toi-même 😉",
   free_gift: "Il manque la mise à jour n° 6 dans Supabase.",
-  rarete_differente: "Les deux cartes doivent avoir la même rareté.",
+  rarete_differente: "Ces deux raretés ne s'échangent pas entre elles (Gadz, communes et peu communes d'un côté ; rares et mythiques de l'autre).",
   version_differente: "Les deux cartes doivent être de la même version (normale contre normale, dorée contre dorée…).",
   carte_plus_la: "Une des deux cartes n'est plus dans la collection : l'échange n'est plus possible.",
   echange_termine: "Cet échange est déjà terminé (accepté, refusé, annulé ou expiré).",
@@ -1408,6 +1409,10 @@ $("logout-btn").onclick = () => { saveToken(null); state.owned = {}; trades = []
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshState(); });
 
 /* ================= Échanges ================= */
+let TRADE_GROUPS = [["gadz", "commune", "peu-commune"], ["rare", "mythique"]]; // raretés qui s'échangent entre elles (réglage admin)
+const tradeGroup = r => { const i = TRADE_GROUPS.findIndex(g => g.includes(r)); return i < 0 ? "seule:" + r : i; };
+const sameGroup = (a, b) => tradeGroup(a) === tradeGroup(b);
+const GROUP_TXT = r => { const i = tradeGroup(r); return typeof i === "number" ? TRADE_GROUPS[i].map(x => RLABEL[x].toLowerCase()).join(", ").replace(/, ([^,]*)$/, " ou $1") : RLABEL[r].toLowerCase(); };
 let trades = [], tradeBusy = false, TRADE_SAME = true; // TRADE_SAME : même version obligatoire (réglage admin)
 const cardById = id => CARDS.find(c => c.id === id);
 const VSHORT = { normale: "normale", brillante: "brillante", textless: "full art", doree: "dorée" };
@@ -1498,8 +1503,8 @@ async function openTrade(pseudo, pre = {}) {
   try { const r = await rpc("player_album", { p_token: TOKEN, p_pseudo: pseudo }); other = {}; (r.owned || []).forEach(([cid, v, n]) => { other[cid + ":" + v] = n; }); pseudo = r.pseudo; }
   catch (e) { return toast(errText(e)); }
   tb = { pseudo, other, want: pre.want || null, give: pre.give || null, replaces: pre.replaces || null };
-  $("tb-help").innerHTML = TRADE_SAME ? "Une carte contre une carte <b>de même rareté et de même version</b> (normale contre normale, dorée contre dorée…). La proposition reste valable 2 jours."
-    : "Une carte contre une carte <b>de même rareté</b>, dans n'importe quelle version. La proposition reste valable 2 jours.";
+  $("tb-help").innerHTML = TRADE_SAME ? "Une carte contre une carte <b>de même version</b> (normale contre normale, dorée contre dorée…). Gadz, communes et peu communes s'échangent entre elles ; rares et mythiques entre elles. La proposition reste valable 2 jours."
+    : "Une carte contre une carte, dans n'importe quelle version. Gadz, communes et peu communes s'échangent entre elles ; rares et mythiques entre elles. La proposition reste valable 2 jours.";
   $("tb-title").textContent = (tb.replaces ? "Modifier l'échange avec " : "Échange avec ") + pseudo;
   $("tb-send").textContent = tb.replaces ? "Envoyer la nouvelle proposition" : "Envoyer la proposition";
   renderTradeBuilder();
@@ -1521,13 +1526,13 @@ function renderTradeBuilder() {
     });
   };
   const wantCard = tb.want && cardById(tb.want[0]);
-  grid($("tb-want"), entriesOf(tb.other), e => { tb.want = [e.card.id, e.variant]; if (tb.give && (cardById(tb.give[0]).rarity !== e.card.rarity || (TRADE_SAME && tb.give[1] !== e.variant))) tb.give = null; renderTradeBuilder(); scrollToGive(); },
+  grid($("tb-want"), entriesOf(tb.other), e => { tb.want = [e.card.id, e.variant]; if (tb.give && (!sameGroup(cardById(tb.give[0]).rarity, e.card.rarity) || (TRADE_SAME && tb.give[1] !== e.variant))) tb.give = null; renderTradeBuilder(); scrollToGive(); },
     e => same(tb.want, e.card.id, e.variant), () => true);
   const mine = entriesOf(state.owned);
-  grid($("tb-give"), wantCard ? mine.filter(e => e.card.rarity === wantCard.rarity && (!TRADE_SAME || e.variant === tb.want[1])) : mine, e => { tb.give = [e.card.id, e.variant]; renderTradeBuilder(); },
+  grid($("tb-give"), wantCard ? mine.filter(e => !(e.card.id === wantCard.id && e.variant === tb.want[1]) && sameGroup(e.card.rarity, wantCard.rarity) && (!TRADE_SAME || e.variant === tb.want[1])) : mine, e => { tb.give = [e.card.id, e.variant]; renderTradeBuilder(); },
     e => same(tb.give, e.card.id, e.variant), () => !!wantCard);
   $("tb-want-sub").textContent = `dans la collec' de ${tb.pseudo}`;
-  $("tb-give-sub").textContent = wantCard ? `tes cartes ${RLABEL[wantCard.rarity].toLowerCase()}${TRADE_SAME ? " en version " + VSHORT[tb.want[1]] : ""}` : "choisis d'abord la carte que tu veux";
+  $("tb-give-sub").textContent = wantCard ? `tes cartes ${GROUP_TXT(wantCard.rarity)}${TRADE_SAME ? " en version " + VSHORT[tb.want[1]] : ""}` : "choisis d'abord la carte que tu veux";
   const giveCard = tb.give && cardById(tb.give[0]);
   $("tb-sum").textContent = wantCard && giveCard ? `Tu donnes ${giveCard.name} (${VSHORT[tb.give[1]]}) contre ${wantCard.name} (${VSHORT[tb.want[1]]})` : "Choisis une carte de chaque côté.";
   $("tb-send").disabled = !(wantCard && giveCard);

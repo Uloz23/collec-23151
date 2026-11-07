@@ -611,7 +611,7 @@ async function loadSettings() {
   $("s-wstart").value = toLocal(settings.weekend_start); $("s-wend").value = toLocal(settings.weekend_end);
   $("s-god").value = Math.round(1 / settings.god_rate); $("s-welcome").value = settings.welcome_gifts;
   $("s-fgw").value = settings.free_gift_weekend_min ?? 60; $("s-fgo").value = settings.free_gift_min ?? 1440; $("s-fgon").checked = settings.free_gift_on ?? true; $("s-tsame").checked = settings.trade_same_variant ?? true;
-  $("s-json").value = JSON.stringify({ slots: settings.slots, god_slots: settings.god_slots, variants: settings.variants }, null, 2);
+  $("s-json").value = JSON.stringify({ slots: settings.slots, god_slots: settings.god_slots, variants: settings.variants, ...(settings.trade_groups ? { trade_groups: settings.trade_groups } : {}) }, null, 2);
 }
 $("s-save").onclick = async () => {
   let adv;
