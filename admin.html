@@ -141,7 +141,7 @@ td.num { font-variant-numeric: tabular-nums; }
       <div class="grid2">
         <label for="e-id">Code (pour les fichiers)<input id="e-id" type="number" min="1"></label>
         <label for="e-name">Nom<input id="e-name" maxlength="40"></label>
-        <label for="e-type">Type<select id="e-type"><option>Gadz</option><option>Tabagn's</option><option>Chant</option><option>Trad's</option></select></label>
+        <label for="e-type">Type<select id="e-type"><option>Gadz</option><option>Tabagn's</option><option>Chant</option><option>Trad's</option><option>Manip'</option></select></label>
         <label for="e-rarity">Rareté<select id="e-rarity"><option value="gadz">Gadz</option><option value="commune">Commune</option><option value="peu-commune">Peu commune</option><option value="rare">Rare</option><option value="mythique">Mythique</option></select></label>
         <label for="e-sub">Promo (Gadz, ou celle de son gadz pour un proche)<input id="e-sub" placeholder="Bo211"></label>
         <label for="e-kind">Proche d'un gadz (vide pour un gadz)<input id="e-kind" list="kinds" placeholder="Za, Zon, Pote…" maxlength="20"><datalist id="kinds"><option value="Za"><option value="Zon"><option value="Pote"><option value="Enfant"></datalist></label>
@@ -151,7 +151,7 @@ td.num { font-variant-numeric: tabular-nums; }
         <label for="e-cbg">Couleur du fond<input type="color" id="e-cbg" value="#4a2a3a" style="width:70px;height:40px;padding:2px"></label>
         <label for="e-cfg">Couleur du motif<input type="color" id="e-cfg" value="#f1dfae" style="width:70px;height:40px;padding:2px"></label>
         <button class="btn" id="e-cdef" type="button">Couleurs par défaut</button>
-        <span class="muted" id="e-cinfo" style="flex-basis:100%">Pour l'illustration des cartes sans photo (Chant, Trad's, Tabagn's).</span>
+        <span class="muted" id="e-cinfo" style="flex-basis:100%">Pour l'illustration des cartes sans photo (Chant, Trad's, Tabagn's, Manip').</span>
       </div>
       <label for="e-text">Texte (facultatif, 110 caractères max)<textarea id="e-text" rows="2" maxlength="140"></textarea></label>
       <label class="check"><input type="checkbox" id="e-pub"> Publiée (visible dans l'album et dans les boosters)</label>
@@ -354,7 +354,7 @@ $("p-body").addEventListener("click", async e => {
 /* ---------- Cartes ---------- */
 // Ordre de l'album : par type ; les Gadz du plus jeune au plus ancien (selon la prom's) ; les autres de la moins rare à la plus rare, puis par ordre alphabétique.
 // Le numéro affiché sur la carte en découle : une carte ajoutée plus tard se range à sa place.
-const TYPE_ORDER = ["Gadz", "Tabagn's", "Chant", "Trad's"];
+const TYPE_ORDER = ["Gadz", "Tabagn's", "Chant", "Trad's", "Manip'"];
 const promOf = c => { const s = c.sub || ""; if (s.startsWith(".")) return 1e6; const m = /(\d+)\s*$/.exec(s); return m ? +m[1] : -1; };
 function sortCards(list) {
   const t = c => { const i = TYPE_ORDER.indexOf(c.type); return i < 0 ? 99 : i; };
@@ -400,7 +400,7 @@ function openEditor(c) {
 /* Couleurs de l'illustration : vides = couleurs automatiques */
 function setColor(id, v, def) { const i = $(id); i.value = v || def; i.dataset.on = v ? "1" : ""; }
 const colorOf = id => $(id).dataset.on ? $(id).value : null;
-function colorInfo() { $("e-cinfo").textContent = (colorOf("e-cbg") || colorOf("e-cfg") ? "Couleurs choisies. " : "Couleurs automatiques. ") + "Elles servent à l'illustration des cartes sans photo (Chant, Trad's, Tabagn's)."; }
+function colorInfo() { $("e-cinfo").textContent = (colorOf("e-cbg") || colorOf("e-cfg") ? "Couleurs choisies. " : "Couleurs automatiques. ") + "Elles servent à l'illustration des cartes sans photo (Chant, Trad's, Tabagn's, Manip')."; }
 ["e-cbg", "e-cfg"].forEach(id => $(id).addEventListener("input", () => { $(id).dataset.on = "1"; colorInfo(); queuePreview(); }));
 $("e-cdef").onclick = () => { setColor("e-cbg", null, "#4a2a3a"); setColor("e-cfg", null, "#f1dfae"); colorInfo(); queuePreview(); };
 /* Aperçu : la page joueur dessine la carte (index.html?apercu) */
