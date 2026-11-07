@@ -623,7 +623,7 @@ const RORDER = ["commune", "peu-commune", "rare", "mythique"];
 const RLABEL = { "gadz": "Gadz", "commune": "Commune", "peu-commune": "Peu commune", "rare": "Rare", "mythique": "Mythique" };
 const RANK = { "commune": 0, "peu-commune": 1, "gadz": 1, "rare": 2, "mythique": 3 };
 const VORDER = ["normale", "brillante", "textless", "doree"];
-const VLABEL = { normale: "Normale", brillante: "Brillante", textless: "Textless", doree: "Dorée" };
+const VLABEL = { normale: "Normale", brillante: "Brillante", textless: "Full art", doree: "Dorée" };
 const score = p => RANK[p.card.rarity] * 10 + (p.card.rarity === "gadz" ? 5 : 0) + VORDER.indexOf(p.variant) * 12;
 
 const media = path => !path ? null : /^(https?|data|blob):/.test(path) ? path : `${CFG.url}/storage/v1/object/public/${CFG.bucket}/${path}`;
@@ -1403,7 +1403,7 @@ document.addEventListener("visibilitychange", () => { if (!document.hidden) refr
 /* ================= Échanges ================= */
 let trades = [], tradeBusy = false, TRADE_SAME = true; // TRADE_SAME : même version obligatoire (réglage admin)
 const cardById = id => CARDS.find(c => c.id === id);
-const VSHORT = { normale: "normale", brillante: "brillante", textless: "textless", doree: "dorée" };
+const VSHORT = { normale: "normale", brillante: "brillante", textless: "full art", doree: "dorée" };
 const seenTrades = () => { try { return JSON.parse(localStorage.getItem("collec23151-trades-vus") || "[]"); } catch (e) { return []; } };
 async function refreshTrades() {
   if (!TOKEN || state.isTest) { trades = []; renderTrades(); return; }
@@ -1600,7 +1600,7 @@ if (/[?&]apercu/.test(location.search)) {
     const card = mapCard(e.data.card); card.num = e.data.num || card.id;
     CARDS = Array.from({ length: e.data.total || 1 }, () => card);
     box.innerHTML = "";
-    [["normale", "Normale"], ["brillante", "Brillante"], ["textless", "Textless"], ["doree", "Dorée"]].forEach(([v, l]) => {
+    [["normale", "Normale"], ["brillante", "Brillante"], ["textless", "Full art"], ["doree", "Dorée"]].forEach(([v, l]) => {
       const f = document.createElement("figure"); f.appendChild(cardEl(card, v));
       const c = document.createElement("figcaption"); c.textContent = l; f.appendChild(c); box.appendChild(f);
     });

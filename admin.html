@@ -167,7 +167,7 @@ td.num { font-variant-numeric: tabular-nums; }
           <button class="btn danger" type="button" id="x-normale">Retirer cette photo</button>
         </div>
         <div class="media">
-          <h2>Photo pleine carte</h2>
+          <h2>Photo full art (pleine carte)</h2>
           <div class="cur portrait" id="m-textless"></div>
           <label class="btn" style="text-align:center">Prendre ou choisir une photo<input type="file" accept="image/*" id="f-textless" hidden></label>
           <button class="btn" type="button" id="r-textless">Recadrer la photo actuelle</button>
@@ -176,7 +176,7 @@ td.num { font-variant-numeric: tabular-nums; }
         <div class="media">
           <h2>Sons</h2>
           <label for="f-a-normale">Version de base<input type="file" accept="audio/*" id="f-a-normale"></label>
-          <label for="f-a-textless">Remix (pleine carte et dorée)<input type="file" accept="audio/*" id="f-a-textless"></label>
+          <label for="f-a-textless">Remix (full art et dorée)<input type="file" accept="audio/*" id="f-a-textless"></label>
           <p class="muted" id="a-cur"></p>
         </div>
       </div>
@@ -197,7 +197,7 @@ td.num { font-variant-numeric: tabular-nums; }
     <!-- Import -->
     <section class="panel" id="tab-import" hidden style="margin-top:14px">
       <h2>Import en masse</h2>
-      <p class="muted">Sélectionne d'un coup tous les fichiers nommés par le <b>code</b> de la carte (affiché dans l'onglet Cartes) : <b>012.jpg</b> (photo normale), <b>012-textless.jpg</b> (pleine carte), <b>012.mp3</b> (son), <b>012-textless.mp3</b> (remix), <b>012-doree.mp3</b>. Les photos sont recadrées au centre si besoin.</p>
+      <p class="muted">Sélectionne d'un coup tous les fichiers nommés par le <b>code</b> de la carte (affiché dans l'onglet Cartes) : <b>012.jpg</b> (photo normale), <b>012-textless.jpg</b> (full art), <b>012.mp3</b> (son), <b>012-textless.mp3</b> (remix pour la full art), <b>012-doree.mp3</b>. Les photos sont recadrées au centre si besoin.</p>
       <label class="btn primary" style="text-align:center;justify-self:start">Choisir les fichiers<input type="file" id="i-files" multiple accept="image/*,audio/*" hidden></label>
       <div class="list" id="i-log"></div>
     </section>
