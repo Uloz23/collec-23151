@@ -293,7 +293,7 @@ button { font: inherit; color: inherit; }
 .ov-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 
 .viewer .stage-v { flex: 1; display: grid; place-items: center; perspective: 1100px; width: 100%; min-height: 0; }
-.viewer .big { width: min(80vw, 380px, calc((100dvh - 230px) * 63 / 88)); transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .5s cubic-bezier(.2,.7,.2,1); touch-action: none; }
+.viewer .big { width: min(80vw, 380px, calc((100dvh - var(--v-reserve, 250px)) * 63 / 88)); transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .5s cubic-bezier(.2,.7,.2,1); touch-action: none; }
 .viewer .big.live { transition: transform .08s linear; }
 .vtabs { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .owned-line { margin: 0; text-align: center; font-family: var(--f-label); font-size: 15px; letter-spacing: .06em; color: var(--muted); }
@@ -433,7 +433,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 .tb-empty { grid-column: 1 / -1; margin: 0; font-family: var(--f-body); color: var(--muted); }
 .tb-foot { position: fixed; left: 0; right: 0; bottom: 0; z-index: 2; display: grid; gap: 8px; justify-items: center; padding: 12px 16px max(14px, env(safe-area-inset-bottom, 0px)); background: rgba(14,9,9,.96); border-top: 1px solid var(--line); }
 .tb-sum { margin: 0; font-family: var(--f-label); font-size: 14px; letter-spacing: .04em; color: var(--muted); text-align: center; }
-#v-trade { padding: 12px 18px; font-size: 16px; }
+#v-trade { padding: 11px 18px; font-size: 15px; }
 </style>
 
 <div class="wrap">
@@ -537,7 +537,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
   <div class="stage-v"><div class="big" id="v-card"></div></div>
   <div class="vtabs" id="v-tabs"></div>
   <button class="btn-ghost" id="v-audio" type="button" hidden>♪ Écouter l'extrait</button>
-  <button class="btn-primary" id="v-trade" type="button" hidden>⇄ Proposer un échange contre cette carte</button>
+  <button class="btn-primary" id="v-trade" type="button" hidden>⇄ Proposer un échange</button>
   <p class="owned-line" id="v-owned"></p>
 </div>
 
@@ -1234,6 +1234,8 @@ function renderViewer() {
   $("v-owned").textContent = `${peek ? "Il l'a" : "Possédée"} ${total} fois · incline la carte pour voir le reflet`;
   $("v-audio").hidden = !hasAudio(card);
   $("v-trade").hidden = !peek || state.isTest;
+  // Place réservée sous la carte : onglets de versions + ligne du bas, plus le bouton son et le bouton d'échange s'ils sont là
+  $("viewer").style.setProperty("--v-reserve", (250 + (hasAudio(card) ? 60 : 0) + ($("v-trade").hidden ? 0 : 75)) + "px");
   const remix = audioFor(card, variant) !== audioFor(card, "normale");
   $("v-audio").textContent = remix ? "♪ Écouter le remix" : "♪ Écouter l'extrait";
 }
