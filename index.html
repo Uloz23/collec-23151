@@ -438,7 +438,15 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 .install-txt { flex: 1; text-align: left; font-family: var(--f-body); font-size: 14px; line-height: 1.35; color: var(--gold-soft); }
 .install-txt b { color: var(--gold); }
 .install-x { flex: none; width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 16px; cursor: pointer; }
-.trades { display: grid; gap: 10px; }
+.trades { display: block; }
+.trades-sum { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(241,223,174,.04); }
+.trades-sum::-webkit-details-marker { display: none; }
+.trades-sum::after { content: "▾"; margin-left: auto; color: var(--gold); transition: transform .2s; }
+.trades[open] .trades-sum::after { transform: rotate(180deg); }
+.trades-sum .page-title { margin: 0; }
+.trades-count { font-family: var(--f-label); font-size: 14px; letter-spacing: .04em; color: var(--muted); }
+.trades-count b { color: var(--parchment); background: var(--fams); border-radius: 10px; padding: 1px 7px; margin-right: 2px; }
+.trades[open] .trade-list { margin-top: 10px; }
 .trade-list { display: grid; gap: 10px; }
 .trade { display: grid; gap: 8px; padding: 12px; border-radius: 14px; border: 1px solid var(--line); background: rgba(241,223,174,.04); }
 .trade.in { border-color: rgba(212,178,106,.6); background: rgba(212,178,106,.08); }
@@ -543,10 +551,10 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 
   <!-- Page 3 : la fam's (classement et albums des autres) -->
   <section class="page page-fams" id="page-fams" aria-labelledby="board-title" hidden>
-    <section class="trades" id="trades" aria-labelledby="trades-title" hidden>
-      <h2 class="page-title" id="trades-title">Échanges</h2>
+    <details class="trades" id="trades" hidden>
+      <summary class="trades-sum"><span class="page-title" id="trades-title">Échanges</span><span class="trades-count" id="trades-count"></span></summary>
       <div class="trade-list" id="trade-list"></div>
-    </section>
+    </details>
     <section class="board">
       <h2 class="page-title" id="board-title">Classement de la fam's</h2>
       <p class="board-hint">Touche un pseudo pour voir son album et lui proposer un échange</p>
@@ -1468,6 +1476,12 @@ function renderTrades() {
   const pending = trades.filter(t => t.status === "attente"), inc = pending.filter(t => !t.mine).length;
   const badge = $("tab-fams-badge"); badge.hidden = !inc; badge.textContent = inc;
   const box = $("trades"); box.hidden = !trades.length;
+  // Repliée par défaut ; elle s'ouvre toute seule quand une nouvelle proposition arrive
+  const out = pending.length - inc, done = trades.filter(t => t.status !== "attente" && t.status !== "modifiee").length;
+  $("trades-count").innerHTML = [inc ? `<b>${inc}</b> reçue${inc > 1 ? "s" : ""}` : "", out ? `${out} envoyée${out > 1 ? "s" : ""}` : "", done ? `${done} terminé${done > 1 ? "s" : ""}` : ""].filter(Boolean).join(" · ");
+  const incIds = pending.filter(t => !t.mine).map(t => t.id).join(",");
+  if (incIds && incIds !== box.dataset.seen) box.open = true;
+  box.dataset.seen = incIds;
   const list = $("trade-list"); list.innerHTML = "";
   const STATUS = { acceptee: "Échange fait ✓", refusee: "Refusé", annulee: "Annulé", expiree: "Expiré", modifiee: "Remplacé par une nouvelle proposition", impossible: "Impossible : une des cartes n'était plus là" };
   trades.filter(t => t.status !== "modifiee").forEach(t => {
