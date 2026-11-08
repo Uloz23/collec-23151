@@ -62,6 +62,16 @@ td.num { font-variant-numeric: tabular-nums; }
 .chip { display: inline-block; margin: 0 4px 6px 0; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); font-family: var(--f-label); font-size: 15px; color: var(--muted); }
 .chip b { color: var(--gold-soft); }
 .scroll { overflow-x: auto; }
+.pr-list { display: grid; gap: 12px; }
+.pr { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(241,223,174,.04); }
+.pr.done { opacity: .55; }
+.pr h3 { margin: 0; font-family: var(--f-gadz); font-weight: 400; font-size: 20px; color: var(--gold-soft); }
+.pr .meta { font-family: var(--f-label); font-size: 13px; letter-spacing: .04em; color: var(--muted); }
+.pr p { margin: 4px 0 0; white-space: pre-line; }
+.pr .flv { font-style: italic; color: var(--gold-soft); }
+.pr img { width: 120px; max-height: 160px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); cursor: zoom-in; }
+.pr .acts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+#pr-badge:not(:empty) { display: inline-block; min-width: 20px; padding: 0 6px; border-radius: 10px; background: #6c609d; color: #fff; font-size: 12px; }
 .st-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin: 6px 0 16px; }
 .st-tile { padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(241,223,174,.04); }
 .st-tile b { display: block; font-family: var(--f-label); font-size: 28px; color: var(--gold); font-variant-numeric: tabular-nums; }
@@ -127,6 +137,7 @@ td.num { font-variant-numeric: tabular-nums; }
       <button class="tab" type="button" data-tab="cards" aria-pressed="false">Cartes</button>
       <button class="tab" type="button" data-tab="import" aria-pressed="false">Import en masse</button>
       <button class="tab" type="button" data-tab="settings" aria-pressed="false">Réglages</button>
+      <button class="tab" type="button" data-tab="props" aria-pressed="false">Propositions <span id="pr-badge"></span></button>
       <button class="tab" type="button" data-tab="stats" aria-pressed="false">Bilan</button>
       <button class="tab" type="button" data-tab="stats2" aria-pressed="false">Stats</button>
     </nav>
@@ -239,6 +250,13 @@ td.num { font-variant-numeric: tabular-nums; }
       <div id="st2-body"><p class="muted">Chargement…</p></div>
     </section>
 
+    <section class="panel" id="tab-props" hidden style="margin-top:14px">
+      <div class="top"><h2>Propositions des joueurs</h2><button class="btn" id="pr-refresh" type="button">Actualiser</button></div>
+      <p class="muted">« Créer la carte » ouvre l'éditeur déjà rempli : choisis la rareté, enregistre, puis recadre la photo proposée. « Supprimer » efface la proposition sans prévenir son auteur.</p>
+      <p class="status" id="pr-status" role="status"></p>
+      <div class="pr-list" id="pr-list"><p class="muted">Chargement…</p></div>
+    </section>
+
     <section class="panel" id="tab-settings" hidden style="margin-top:14px">
       <h2>Réglages des boosters</h2>
       <div class="grid2">
@@ -281,7 +299,7 @@ async function start() {
   const { data: ok, error } = await SB.rpc("become_first_admin");
   if (error || !ok) { await SB.auth.signOut(); $("login").hidden = false; say($("l-status"), "Ce compte n'est pas administrateur de la collec'.", false); return; }
   $("login").hidden = true; $("app").hidden = false; $("who-row").hidden = false; $("who").textContent = session.user.email;
-  loadPlayers(); loadCards(); loadSettings();
+  loadPlayers(); loadCards(); loadSettings(); loadProps();
 }
 $("login").addEventListener("submit", async e => {
   e.preventDefault(); $("l-go").disabled = true; say($("l-status"), "Connexion…");
@@ -293,11 +311,63 @@ $("login").addEventListener("submit", async e => {
 $("logout").onclick = async () => { await SB.auth.signOut(); location.reload(); };
 document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
   document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-pressed", String(x === t)));
-  ["players", "cards", "import", "settings", "stats", "stats2"].forEach(n => $("tab-" + n).hidden = n !== t.dataset.tab);
+  ["players", "cards", "import", "settings", "props", "stats", "stats2"].forEach(n => $("tab-" + n).hidden = n !== t.dataset.tab);
   $("editor").hidden = true;
   if (t.dataset.tab === "players") loadPlayers();
   if (t.dataset.tab === "stats") loadStats();
   if (t.dataset.tab === "stats2") loadStats2();
+  if (t.dataset.tab === "props") loadProps();
+});
+
+/* ---------- Propositions des joueurs ---------- */
+let props = [], pendingProp = null;
+async function loadProps() {
+  const { data, error } = await SB.rpc("admin_proposals");
+  if (error) { $("pr-list").innerHTML = `<p class="status bad">Erreur : ${esc(error.message)}${error.message.includes("admin_proposals") ? " (as-tu installé la mise à jour n° 13 ?)" : ""}</p>`; return; }
+  props = data || [];
+  const n = props.filter(x => x.status === "attente").length; $("pr-badge").textContent = n || "";
+  $("pr-list").innerHTML = props.length ? props.map(x => `<article class="pr${x.status === "attente" ? "" : " done"}" data-id="${x.id}">
+    <div>
+      <div class="meta">${esc(x.pseudo)} · ${when(x.created_at)}${x.status === "ajoutee" ? " · ajoutée ✓" : ""}</div>
+      <h3>${x.kind === "amelioration" ? "Amélioration : " + esc(x.card_name || "carte supprimée") : esc(x.name || "Sans nom")}</h3>
+      ${x.kind === "nouvelle" ? `<div class="meta">Type proposé : ${esc(x.type || "non précisé")}</div>` : ""}
+      ${x.idea ? `<p>${esc(x.idea)}</p>` : ""}${x.flavor ? `<p class="flv">« ${esc(x.flavor)} »</p>` : ""}
+    </div>
+    ${x.photo ? `<img src="${x.photo}" alt="Photo proposée" data-zoom>` : "<span></span>"}
+    <div class="acts">
+      ${x.kind === "nouvelle" && x.status === "attente" ? `<button class="btn primary" data-act="create" type="button">Créer la carte</button>` : ""}
+      ${x.kind === "amelioration" && x.card_id ? `<button class="btn" data-act="open" type="button">Ouvrir la carte</button>${x.photo ? `<button class="btn" data-act="photo-n" type="button">Photo → normale</button><button class="btn" data-act="photo-t" type="button">Photo → full art</button>` : ""}` : ""}
+      ${x.status === "attente" ? `<button class="btn" data-act="done" type="button">Marquer ajoutée</button>` : ""}
+      <button class="btn danger" data-act="del" type="button">Supprimer</button>
+    </div></article>`).join("") : `<p class="muted">Aucune proposition pour l'instant.</p>`;
+}
+$("pr-refresh").onclick = loadProps;
+async function goEditor(card, prop, cropVariant) {
+  if (!cards.length) await loadCards();
+  document.querySelector('.tab[data-tab="cards"]').click();
+  pendingProp = prop;
+  openEditor(card);
+  if (cropVariant && prop.photo) { try { startCrop(await loadImageUrl(prop.photo), cropVariant, true); } catch (e) {} }
+}
+$("pr-list").addEventListener("click", async e => {
+  if (e.target.matches("img[data-zoom]")) { window.open().document.write(`<img src="${e.target.src}" style="max-width:100%">`); return; }
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  const x = props.find(p => p.id === +b.closest(".pr").dataset.id); if (!x) return;
+  const act = b.dataset.act;
+  if (act === "del") {
+    if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Confirmer"; setTimeout(() => { delete b.dataset.armed; b.textContent = "Supprimer"; }, 4000); return; }
+    const { error } = await SB.rpc("admin_proposal_delete", { p_id: x.id }); if (error) return say($("pr-status"), "Erreur : " + error.message, false);
+    return loadProps();
+  }
+  if (act === "done") { const { error } = await SB.rpc("admin_proposal_done", { p_id: x.id }); if (error) return say($("pr-status"), "Erreur : " + error.message, false); return loadProps(); }
+  if (act === "create") {
+    if (!cards.length) await loadCards();
+    const type = TYPE_ORDER.includes(x.type) ? x.type : "Trad's";
+    return goEditor({ id: Math.max(0, ...cards.map(c => c.id)) + 1, name: x.name || "", type, rarity: type === "Gadz" ? "gadz" : "commune", sub: "", fams: "", text: x.flavor || "", published: false, _new: true }, x, null);
+  }
+  const card = cards.find(c => c.id === x.card_id) || (await loadCards(), cards.find(c => c.id === x.card_id));
+  if (!card) return say($("pr-status"), "Cette carte n'existe plus.", false);
+  goEditor(card, x, act === "photo-n" ? "normale" : act === "photo-t" ? "textless" : null);
 });
 
 /* ---------- Bilan : échanges et boosters ---------- */
@@ -534,7 +604,7 @@ function showMedia() {
   $("m-textless").style.backgroundImage = c.photo_textless ? `url('${media(c.photo_textless)}')` : "none";
   $("a-cur").textContent = [c.audio_normale && "son de base ✓", c.audio_textless && "remix ✓", c.audio_doree && "son dorée ✓"].filter(Boolean).join(" · ") || "Pas encore de son.";
 }
-$("e-close").onclick = () => { $("editor").hidden = true; $("tab-cards").hidden = false; loadCards(); };
+$("e-close").onclick = () => { pendingProp = null; $("editor").hidden = true; $("tab-cards").hidden = false; loadCards(); };
 const ART = { "Gadz": "gadz", "Trad's": "trad", "Chant": "chant", "Manip'": "manip", "Tabagn's": "tabagn" };
 $("e-save").onclick = async () => {
   const row = { id: +$("e-id").value, name: $("e-name").value.trim(), type: $("e-type").value, rarity: $("e-rarity").value,
@@ -546,6 +616,11 @@ $("e-save").onclick = async () => {
   const { data, error } = await q;
   if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message.includes("color_") ? "il manque la mise à jour n° 5 dans Supabase." : error.message.includes("kind") ? "il manque la mise à jour n° 4 dans Supabase." : error.message), false);
   current = data; $("e-id").disabled = true; $("e-del").hidden = false; $("e-title").textContent = `Carte « ${data.name} » · code ${pad(data.id)}`;
+  if (pendingProp && pendingProp.kind === "nouvelle") {
+    const pp = pendingProp; pendingProp = null;
+    try { await SB.rpc("admin_proposal_done", { p_id: pp.id }); } catch (e) {}
+    if (pp.photo) { try { startCrop(await loadImageUrl(pp.photo), "normale", true); } catch (e) {} }
+  }
   say($("e-status"), row.published ? "Enregistrée et publiée." : "Enregistrée en brouillon (invisible pour les joueurs).");
 };
 $("e-del").onclick = async () => {
