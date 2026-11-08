@@ -95,7 +95,11 @@ button { font: inherit; color: inherit; }
 
 /* ---------- Filtres ---------- */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; }
-.vfilters { margin-top: -10px; }
+.filterbar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end; }
+.filterbar label { display: grid; gap: 4px; min-width: 0; font-family: var(--f-label); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.filterbar select { width: 100%; min-width: 0; padding: 9px 20px 9px 8px; border-radius: 10px; border: 1px solid var(--line); background: #241816 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23d4b26a'/%3E%3C/svg%3E") right 7px center / 9px 6px no-repeat; color: var(--parchment); font-family: var(--f-label); font-size: clamp(13px, 3.8vw, 15px); letter-spacing: 0; -webkit-appearance: none; appearance: none; text-overflow: ellipsis; }
+.filterbar select.on { border-color: var(--gold); background-color: rgba(212,178,106,.16); color: var(--gold-soft); }
+.filterbar .reset { grid-column: 1 / -1; justify-self: end; border: 0; background: none; padding: 2px 4px; cursor: pointer; font-family: var(--f-label); font-size: 14px; letter-spacing: .04em; color: var(--gold); }
 .album-empty { grid-column: 1 / -1; margin: 20px 0; text-align: center; font-family: var(--f-body); font-size: 17px; color: var(--muted); }
 .vfilters .chip { font-size: 14px; padding: 5px 12px; }
 .vfilters .chip[aria-pressed="true"] { background: var(--fams); border-color: var(--fams); color: #fff; }
@@ -543,8 +547,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
       <div class="progress-line"><span id="prog-cards">0 / 0 cartes</span><span id="prog-var">0 variante</span></div>
       <div class="meter"><i id="prog-bar"></i></div>
     </div>
-    <nav class="filters" id="filters" aria-label="Filtrer par type"></nav>
-    <nav class="filters vfilters" id="vfilters" aria-label="Filtrer par version"></nav>
+    <div class="filterbar" id="filters" role="group" aria-label="Filtres de l'album"></div>
     <section class="album" id="album" aria-label="Album"></section>
     <ul class="legend" aria-label="Raretés" id="legend"></ul>
   </section>
@@ -810,41 +813,50 @@ function backEl() {
   return el;
 }
 
-let filter = "Tous";
-// Filtre par version : null = toutes ; sinon on ne compte et n'affiche que les cartes possédées dans cette version
-let vfilter = null;
+let filter = "Tous";   // type
+let rfilter = null;    // rareté
+let vfilter = null;    // version : avec un filtre de version, on ne compte et n'affiche que les cartes possédées dans cette version
 const hasIt = id => vfilter ? (OWN()[id + ":" + vfilter] || 0) : ownedCount(id);
+const RARITY_ORDER = ["gadz", "commune", "peu-commune", "rare", "mythique"];
+// Trois menus déroulants (type, rareté, version) au lieu d'une rangée de boutons par critère
 function renderFilters() {
-  const vf = $("vfilters"); vf.innerHTML = "";
-  [[null, "Toutes versions"], ["brillante", "✦ Brillantes"], ["textless", "Full art"], ["doree", "Dorées"]].forEach(([v, l]) => {
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "chip"; b.setAttribute("aria-pressed", String(vfilter === v));
-    const n = v ? CARDS.filter(c => OWN()[c.id + ":" + v]).length : null;
-    b.innerHTML = esc(l) + (n !== null ? `<span class="n">${n}</span>` : "");
-    b.onclick = () => { vfilter = v; renderFilters(); renderAlbum(); };
-    vf.appendChild(b);
-  });
   const f = $("filters"); f.innerHTML = "";
-  ["Tous", ...TYPES.filter(t => CARDS.some(c => c.type === t))].forEach(t => {
-    const list = t === "Tous" ? CARDS : CARDS.filter(c => c.type === t);
-    const have = list.filter(c => hasIt(c.id) > 0).length;
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "chip"; b.setAttribute("aria-pressed", String(filter === t));
-    b.innerHTML = `${esc(t)}<span class="n">${have}/${list.length}</span>`;
-    b.onclick = () => { filter = t; renderFilters(); renderAlbum(); };
-    f.appendChild(b);
-  });
+  const count = list => `${list.filter(c => hasIt(c.id) > 0).length}/${list.length}`;
+  const menu = (label, value, options, onPick) => {
+    const l = document.createElement("label"); l.textContent = label;
+    const sel = document.createElement("select");
+    options.forEach(([v, txt]) => { const o = document.createElement("option"); o.value = v ?? ""; o.textContent = txt; sel.appendChild(o); });
+    sel.value = value ?? ""; if (sel.selectedIndex > 0) sel.classList.add("on");
+    sel.onchange = () => { onPick(sel.value || null); renderFilters(); renderAlbum(); };
+    l.appendChild(sel); f.appendChild(l);
+  };
+  const byR = rfilter ? CARDS.filter(c => c.rarity === rfilter) : CARDS;
+  menu("Type", filter === "Tous" ? null : filter,
+    [[null, "Tous"], ...TYPES.filter(t => CARDS.some(c => c.type === t)).map(t => [t, `${t} ${count(byR.filter(c => c.type === t))}`])],
+    v => { filter = v || "Tous"; });
+  const byT = filter === "Tous" ? CARDS : CARDS.filter(c => c.type === filter);
+  menu("Rareté", rfilter,
+    [[null, "Toutes"], ...RARITY_ORDER.filter(r => byT.some(c => c.rarity === r)).map(r => [r, `${RLABEL[r]} ${count(byT.filter(c => c.rarity === r))}`])],
+    v => { rfilter = v; });
+  menu("Version", vfilter,
+    [[null, "Toutes"], ...[["brillante", "Brillante"], ["textless", "Full art"], ["doree", "Dorée"]].map(([v, l]) => [v, `${l} ${CARDS.filter(c => OWN()[c.id + ":" + v]).length}`])],
+    v => { vfilter = v; });
+  if (filter !== "Tous" || rfilter || vfilter) {
+    const r = document.createElement("button"); r.type = "button"; r.className = "reset"; r.textContent = "✕ Tout afficher";
+    r.onclick = () => { filter = "Tous"; rfilter = null; vfilter = null; renderFilters(); renderAlbum(); };
+    f.appendChild(r);
+  }
 }
 function renderAlbum() {
   const a = $("album"); a.innerHTML = "";
   let lastType = null;
   // Avec un filtre de version, on n'affiche que les cartes possédées dans cette version
-  const shown = CARDS.filter(c => (filter === "Tous" || c.type === filter) && (!vfilter || hasIt(c.id)));
-  if (!shown.length) a.innerHTML = `<p class="album-empty">${vfilter ? "Aucune carte dans cette version pour l'instant." : "Aucune carte."}</p>`;
+  const shown = CARDS.filter(c => (filter === "Tous" || c.type === filter) && (!rfilter || c.rarity === rfilter) && (!vfilter || hasIt(c.id)));
+  if (!shown.length) a.innerHTML = `<p class="album-empty">${vfilter ? "Aucune carte dans cette version pour l'instant." : "Aucune carte avec ces filtres."}</p>`;
   shown.forEach(card => {
     if (filter === "Tous" && card.type !== lastType) {
       lastType = card.type;
-      const list = CARDS.filter(c => c.type === card.type), have = list.filter(c => hasIt(c.id) > 0).length;
+      const list = CARDS.filter(c => c.type === card.type && (!rfilter || c.rarity === rfilter)), have = list.filter(c => hasIt(c.id) > 0).length;
       const h = document.createElement("h3"); h.className = "album-sep";
       h.innerHTML = `${esc(card.type)} <small>${have} / ${list.length}</small>`;
       a.appendChild(h);
