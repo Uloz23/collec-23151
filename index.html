@@ -673,7 +673,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="config.js"></script>
+<script src="config.js?v=2"></script>
 <script>
 (() => {
 /* ================= Données : tout vient de la base Supabase ================= */
@@ -1702,6 +1702,14 @@ $("pf-file").addEventListener("change", e => {
   img.onerror = () => { $("pf-err").textContent = "Impossible de lire cette photo."; };
   img.src = url;
 });
+// E-mail à l'admin via Web3Forms (clé publique dans config.js). Si ça échoue, la proposition reste enregistrée.
+function notifyAdmin(kind, name, idea, flavor, photo) {
+  if (!CFG.notifyKey) return;
+  const what = kind === "amelioration" ? `amélioration de « ${(cardById(+$("pf-card").value) || {}).name || "?"} »` : `${name}${$("pf-type").value ? " (" + $("pf-type").value + ")" : ""}`;
+  fetch("https://api.web3forms.com/submit", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ access_key: CFG.notifyKey, subject: `💡 Collec' 23-151 : proposition de ${state.pseudo} — ${what}`, from_name: "Collec' 23-151",
+      message: `${state.pseudo} propose : ${what}\n\nL'idée :\n${idea || "—"}\n\nTexte d'ambiance : ${flavor || "—"}\nPhoto jointe : ${photo ? "oui (voir l'onglet Propositions de l'admin)" : "non"}\n\nAdmin : https://uloz23.github.io/collec-23151/admin.html` }) }).catch(() => {});
+}
 $("pf-unphoto").addEventListener("click", () => { propPhoto = null; $("pf-prev").hidden = true; $("pf-unphoto").hidden = true; });
 $("pf").addEventListener("submit", async e => {
   e.preventDefault();
@@ -1713,6 +1721,7 @@ $("pf").addEventListener("submit", async e => {
     await rpc("proposal_create", { p_token: TOKEN, p_kind: k, p_card: k === "amelioration" ? +$("pf-card").value : null, p_name: k === "nouvelle" ? name : null,
       p_type: k === "nouvelle" ? $("pf-type").value || null : null, p_idea: idea, p_flavor: flavor, p_photo: propPhoto });
     closeProp(); toast("💡 Merci ! Ta proposition est envoyée."); loadMyProps();
+    notifyAdmin(k, name, idea, flavor, !!propPhoto);
   } catch (err) { $("pf-err").textContent = errText(err); }
   $("pf-send").disabled = false;
 });
