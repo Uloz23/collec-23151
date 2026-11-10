@@ -5,5 +5,7 @@ window.COLLEC_CFG = {
   key: "sb_publishable_ge2QrCoE05jR1AYePGaDLw_h_5jYQ1K",
   bucket: "medias",
   // Clé publique Web3Forms : envoie un e-mail à l'admin à chaque proposition de carte
-  notifyKey: "c78e0c2a-75c4-48b5-9593-a1c11b96e1fd"
+  notifyKey: "c78e0c2a-75c4-48b5-9593-a1c11b96e1fd",
+  // Clé publique des notifications sur téléphone (la clé secrète associée est rangée dans Supabase)
+  vapidPublic: "BD47_5tqgiO5fWOutYBVb7rTdH_EqZhTCUOff6byo59sGOVlUs7vQhrm2EO41QxRVxZ0Yi1Nvb_rC7r2yFKpWsc"
 };

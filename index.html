@@ -499,6 +499,18 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 .pf-photo .pf-pick { display: inline-block; text-transform: none; letter-spacing: .04em; font-size: 15px; color: var(--gold-soft); }
 .pf-photo img { max-width: 100%; max-height: 260px; border-radius: 10px; border: 1px solid var(--line); }
 .pf-err { margin: 0; min-height: 20px; color: #ff9b9b; font-family: var(--f-label); font-size: 15px; }
+.notif-ov { align-items: stretch; }
+.notif-ov .ov-top, .nt { width: 100%; max-width: 520px; margin: 0 auto; }
+.nt { display: grid; gap: 14px; }
+.nt-info { margin: 0; min-height: 0; font-family: var(--f-body); font-size: 16px; line-height: 1.4; color: var(--gold-soft); }
+.nt-info:empty { display: none; }
+.nt-info b { color: var(--gold); }
+.nt label { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: rgba(241,223,174,.04); font-family: var(--f-label); font-size: 16px; color: var(--parchment); cursor: pointer; }
+.nt input[type=checkbox] { width: 22px; height: 22px; accent-color: #c9a24e; flex: none; }
+.nt-main { border-color: var(--gold) !important; background: rgba(212,178,106,.1) !important; font-weight: 600; }
+.nt-list { display: grid; gap: 8px; }
+.nt-list.off { opacity: .4; pointer-events: none; }
+.nt-note { margin: 0; text-align: center; font-family: var(--f-label); font-size: 13px; color: var(--muted); }
 </style>
 
 <div class="wrap">
@@ -510,6 +522,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
     <div class="head-actions">
       <span class="who" id="who"></span>
       <button class="btn-ghost" id="snd-btn" type="button" aria-pressed="true">Son activé</button>
+      <button class="btn-ghost" id="notif-btn" type="button" aria-label="Notifications" hidden>🔕</button>
       <button class="btn-ghost" id="logout-btn" type="button">Changer de compte</button>
     </div>
   </header>
@@ -520,6 +533,11 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
       <span class="install-txt" id="install-txt">Garde la Collec' sur ton écran d'accueil, comme une appli.</span>
       <button class="btn-ghost" id="install-go" type="button" hidden>Ajouter</button>
       <button class="install-x" id="install-x" type="button" aria-label="Masquer">✕</button>
+    </div>
+    <div class="install" id="notif-invite" hidden>
+      <span class="install-txt">🔔 Être prévenu quand ta réserve est pleine ?</span>
+      <button class="btn-ghost" id="ni-go" type="button">Activer</button>
+      <button class="install-x" id="ni-x" type="button" aria-label="Masquer">✕</button>
     </div>
     <h2 class="page-title" id="reserve-title">Tes boosters</h2>
     <button class="pack big-pack" id="big-pack" type="button" aria-label="Ouvrir un booster">
@@ -670,10 +688,25 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
   </form>
 </div>
 
+<div class="overlay notif-ov" id="notif-ov" hidden role="dialog" aria-modal="true" aria-labelledby="nt-title">
+  <div class="ov-top"><span class="ov-count" id="nt-title">Notifications</span><button class="btn-ghost" id="nt-close" type="button">Fermer</button></div>
+  <div class="nt">
+    <p class="nt-info" id="nt-info"></p>
+    <label class="nt-main"><input type="checkbox" id="nt-on"> <span>Recevoir des notifications sur ce téléphone</span></label>
+    <div class="nt-list" id="nt-list">
+      <label><input type="checkbox" data-k="full"> <span>🎴 Ma réserve de boosters est pleine</span></label>
+      <label><input type="checkbox" data-k="rappel"> <span>🕖 Rappel vers 19 h si des boosters m'attendent</span></label>
+      <label><input type="checkbox" data-k="cadeau"> <span>🎁 On m'offre un booster</span></label>
+      <label><input type="checkbox" data-k="echange"> <span>⇄ Échanges (proposés, acceptés, refusés)</span></label>
+    </div>
+    <p class="nt-note">Réglages valables pour ce téléphone uniquement.</p>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="config.js?v=2"></script>
+<script src="config.js?v=3"></script>
 <script>
 (() => {
 /* ================= Données : tout vient de la base Supabase ================= */
@@ -1338,6 +1371,7 @@ function closeOpening() {
   document.body.style.overflow = "";
   renderAll();
   $("open-btn").focus();
+  maybeInvite();
 }
 $("ov-stage").addEventListener("click", advance);
 $("ov-stage").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); advance(); } });
@@ -1494,13 +1528,13 @@ $("login-form").addEventListener("submit", async e => {
     ac(); // débloque le son pendant ce geste
     const r = await rpc(mode === "new" ? "register" : "login", { p_pseudo: pseudo, p_pin: pin });
     if (r.error) { err.textContent = ERRORS[r.error] || "Connexion impossible."; return; }
-    saveToken(r.token); applyState(r.state); hideLogin(); renderAll(); refreshTrades();
+    saveToken(r.token); applyState(r.state); hideLogin(); renderAll(); refreshTrades(); pushSync();
     $("f-pin").value = ""; $("f-pin2").value = "";
     toast(mode === "new" ? `Bienvenue ${state.pseudo} ! Ton premier booster t'attend.` : `Re-bonjour ${state.pseudo} !`);
   } catch (e2) { err.textContent = errText(e2); }
   finally { go.disabled = false; }
 });
-$("logout-btn").onclick = () => { saveToken(null); state.owned = {}; trades = []; renderTrades(); renderAll(); setMode("old"); showLogin("Connecte-toi avec ton pseudo et ton code."); };
+$("logout-btn").onclick = () => { saveToken(null); state.owned = {}; trades = []; renderTrades(); $("notif-btn").hidden = true; renderAll(); setMode("old"); showLogin("Connecte-toi avec ton pseudo et ton code."); };
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshState(); });
 
 /* ================= Échanges ================= */
@@ -1755,6 +1789,77 @@ $("fg-go").addEventListener("click", async () => {
   renderFreeGift();
 });
 
+/* ================= Notifications sur le téléphone ================= */
+const PREFS0 = { full: true, rappel: true, cadeau: true, echange: true };
+const pushOK = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && !!CFG.vapidPublic;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const keyBytes = b64 => { const s = atob((b64 + "=".repeat((4 - b64.length % 4) % 4)).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(s, c => c.charCodeAt(0)); };
+let pushSub = null, pushPrefs = { ...PREFS0 };
+async function pushReg() { try { return await navigator.serviceWorker.ready; } catch (e) { return null; } }
+async function pushSave() {
+  if (!pushSub || !TOKEN) return;
+  const j = pushSub.toJSON();
+  await rpc("push_subscribe", { p_token: TOKEN, p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth, p_prefs: pushPrefs });
+}
+// Au démarrage : si ce téléphone est déjà abonné, on le rattache au joueur connecté et on récupère ses choix
+async function pushSync() {
+  $("notif-btn").hidden = !TOKEN || !pushOK();
+  if (!pushOK() || !TOKEN) return;
+  const reg = await pushReg(); if (!reg) return;
+  pushSub = await reg.pushManager.getSubscription();
+  if (pushSub && Notification.permission === "granted") {
+    try { const p = await rpc("push_prefs", { p_token: TOKEN, p_endpoint: pushSub.endpoint }); if (p) pushPrefs = { ...PREFS0, ...p }; await pushSave(); } catch (e) {}
+  } else pushSub = null;
+  renderNotif();
+}
+function renderNotif() {
+  const on = !!pushSub;
+  $("notif-btn").textContent = on ? "🔔" : "🔕";
+  $("notif-btn").setAttribute("aria-label", on ? "Notifications activées" : "Notifications coupées");
+  $("nt-on").checked = on;
+  $("nt-list").classList.toggle("off", !on);
+  document.querySelectorAll("#nt-list input").forEach(i => { i.checked = !!pushPrefs[i.dataset.k]; });
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  let info = "";
+  if (!pushOK() && isIOS() && !standalone) info = "Sur iPhone, les notifications ne marchent que si la Collec' est sur ton écran d'accueil : touche <b>Partager</b> (le carré avec la flèche), puis <b>« Sur l'écran d'accueil »</b>, et ouvre-la depuis là.";
+  else if (!pushOK()) info = "Ce navigateur ne permet pas les notifications. Sur iPhone, ajoute d'abord la Collec' à ton écran d'accueil.";
+  else if (Notification.permission === "denied") info = "Les notifications sont bloquées pour ce site. Pour les réactiver, va dans les réglages de ton téléphone (ou du navigateur), rubrique Notifications, et autorise la Collec' 23-151.";
+  $("nt-info").innerHTML = info;
+  $("nt-on").disabled = !pushOK() || Notification.permission === "denied";
+}
+async function pushEnable() {
+  if (!pushOK()) return false;
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") { renderNotif(); return false; }
+    const reg = await pushReg(); if (!reg) return false;
+    pushSub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(CFG.vapidPublic) });
+    await pushSave(); renderNotif(); toast("🔔 Notifications activées");
+    return true;
+  } catch (e) { toast(String(e && e.message || e).includes("push_") ? "Il manque la mise à jour n° 14 dans Supabase." : "Impossible d'activer les notifications sur ce téléphone."); pushSub = null; renderNotif(); return false; }
+}
+async function pushDisable() {
+  try { if (pushSub) { const ep = pushSub.endpoint; await pushSub.unsubscribe(); await rpc("push_unsubscribe", { p_token: TOKEN, p_endpoint: ep }); } } catch (e) {}
+  pushSub = null; renderNotif();
+}
+$("notif-btn").addEventListener("click", () => { renderNotif(); document.body.style.overflow = "hidden"; $("notif-ov").hidden = false; });
+$("nt-close").addEventListener("click", () => { $("notif-ov").hidden = true; document.body.style.overflow = ""; });
+$("nt-on").addEventListener("change", async e => { if (e.target.checked) { if (!(await pushEnable())) e.target.checked = false; } else await pushDisable(); });
+$("nt-list").addEventListener("change", async e => {
+  const k = e.target.dataset.k; if (!k) return;
+  pushPrefs[k] = e.target.checked;
+  try { await pushSave(); } catch (err) { toast(errText(err)); }
+});
+// Invitation discrète, une seule fois, après la première ouverture de booster
+const inviteDone = () => { try { return localStorage.getItem("collec23151-notif-invite") === "1"; } catch (e) { return true; } };
+function maybeInvite() {
+  if (!pushOK() || pushSub || inviteDone() || Notification.permission !== "default") return;
+  $("notif-invite").hidden = false;
+}
+const closeInvite = () => { $("notif-invite").hidden = true; try { localStorage.setItem("collec23151-notif-invite", "1"); } catch (e) {} };
+$("ni-x").addEventListener("click", closeInvite);
+$("ni-go").addEventListener("click", async () => { closeInvite(); await pushEnable(); });
+
 /* ================= Ajout à l'écran d'accueil ================= */
 // Android (Chrome, Samsung) : vrai bouton « Ajouter ». iPhone : explication (Apple ne permet pas de bouton).
 let installEvt = null;
@@ -1806,7 +1911,7 @@ setMode("new");
   catch (e) { $("login-sub").textContent = "Impossible de charger les cartes. Vérifie ta connexion et recharge la page."; return; }
   renderAll();
   if (TOKEN) {
-    try { applyState(await rpc("me", { p_token: TOKEN })); hideLogin(); renderAll(); refreshTrades(); }
+    try { applyState(await rpc("me", { p_token: TOKEN })); hideLogin(); renderAll(); refreshTrades(); pushSync(); }
     catch (e) { if (TOKEN) { $("login-sub").textContent = "Problème de connexion. Recharge la page."; return; } }
   } else showLogin();
   setInterval(renderReserve, 1000);
