@@ -91,6 +91,11 @@ td.num { font-variant-numeric: tabular-nums; }
 .ctile .cn { font-family: var(--f-gadz); font-size: 15px; color: var(--gold-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ctile .cm { font-family: var(--f-label); font-size: 12px; color: var(--muted); letter-spacing: .04em; }
 .ctile.off { opacity: .5; }
+.drafts { display: grid; gap: 8px; padding: 12px; margin-bottom: 18px; border: 1px dashed var(--gold); border-radius: 12px; background: rgba(212,178,106,.05); }
+.drafts h3, .pub-h { margin: 0; font-family: var(--f-label); font-size: 15px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+.drafts h3 small { letter-spacing: .04em; color: var(--muted); text-transform: none; }
+.drafts .ctile { opacity: 1; position: relative; }
+.ctile .pick { position: absolute; top: 10px; left: 10px; width: 22px; height: 22px; accent-color: #c9a24e; z-index: 2; }
 .dots { display: flex; gap: 4px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(241,223,174,.15); }
 .dot.on { background: var(--ok); }
@@ -167,6 +172,14 @@ td.num { font-variant-numeric: tabular-nums; }
     <section class="panel" id="tab-cards" hidden style="margin-top:14px">
       <div class="top"><h2>Cartes</h2><div class="row"><input id="c-search" placeholder="Chercher une carte…" style="width:200px"><button class="btn primary" id="c-new" type="button">Nouvelle carte</button></div></div>
       <p class="muted">Pastilles : photo normale, photo pleine carte, son. Touche une carte pour la modifier.</p>
+      <div class="drafts" id="c-drafts" hidden>
+        <div class="top"><h3>Brouillons <small id="c-dcount"></small></h3>
+          <div class="row"><button class="btn" id="c-dall" type="button">Tout cocher</button><button class="btn primary" id="c-pub" type="button">Publier les cartes cochées</button></div></div>
+        <p class="muted">Pas encore visibles par les joueurs ni dans les boosters. Coche celles à publier, puis publie-les d'un coup.</p>
+        <p class="status" id="c-pstatus" role="status"></p>
+        <div class="cards" id="c-dlist"></div>
+      </div>
+      <h3 class="pub-h" id="c-ph">Cartes publiées</h3>
       <div class="cards" id="c-list"></div>
     </section>
 
@@ -552,15 +565,42 @@ function renderCards() {
   const q = $("c-search").value.trim().toLowerCase();
   cards = sortCards(cards); const nums = {}; cards.filter(c => c.published).forEach((c, i) => { nums[c.id] = i + 1; });
   NUMS = nums; NTOTAL = Object.keys(nums).length;
-  $("c-list").innerHTML = cards.filter(c => !q || c.name.toLowerCase().includes(q) || String(c.id) === q).map(c => {
+  const tile = c => {
     const img = media(c.photo_normale || c.photo_textless);
-    return `<button class="ctile${c.published ? "" : " off"}" type="button" data-id="${c.id}">
+    const tag = c.published ? "button" : "div"; // une case à cocher ne peut pas être dans un bouton
+    return `<${tag} class="ctile${c.published ? "" : " off"}" ${c.published ? 'type="button"' : 'role="button" tabindex="0"'} data-id="${c.id}">${c.published ? "" : `<input type="checkbox" class="pick" data-id="${c.id}" aria-label="Publier ${esc(c.name)}"${draftPick.has(c.id) ? " checked" : ""}>`}
       <div class="thumb" style="${img ? `background-image:url('${img}')` : ""}">${img ? "" : "pas de photo"}</div>
       <span class="cn">${esc(c.name)}</span><span class="cm">${nums[c.id] ? "n° " + pad(nums[c.id]) : "—"} · code ${pad(c.id)} · ${esc(c.type)}${c.kind ? " – " + esc(c.kind) : ""} · ${esc(c.rarity)}${c.published ? "" : " · brouillon"}</span>
       <span class="dots"><i class="dot${c.photo_normale ? " on" : ""}"></i><i class="dot${c.photo_textless ? " on" : ""}"></i><i class="dot${c.audio_normale ? " on" : ""}"></i></span>
-    </button>`;
-  }).join("");
+    </${tag}>`;
+  };
+  const shown = cards.filter(c => !q || c.name.toLowerCase().includes(q) || String(c.id) === q);
+  const drafts = shown.filter(c => !c.published), pubs = shown.filter(c => c.published);
+  $("c-drafts").hidden = !drafts.length;
+  $("c-dcount").textContent = `(${drafts.length})`;
+  $("c-dlist").innerHTML = drafts.map(tile).join("");
+  $("c-ph").textContent = `Cartes publiées (${pubs.length})`;
+  $("c-list").innerHTML = pubs.map(tile).join("");
 }
+// Brouillons : cocher puis publier d'un coup
+const draftPick = new Set();
+$("c-dlist").onclick = e => {
+  if (e.target.classList.contains("pick")) { e.stopPropagation(); const id = +e.target.dataset.id; e.target.checked ? draftPick.add(id) : draftPick.delete(id); return; }
+  const t = e.target.closest(".ctile"); if (t) openEditor(cards.find(c => c.id === +t.dataset.id));
+};
+$("c-dall").onclick = () => { const all = cards.filter(c => !c.published).map(c => c.id); const every = all.every(id => draftPick.has(id)); all.forEach(id => every ? draftPick.delete(id) : draftPick.add(id)); renderCards(); };
+$("c-pub").onclick = async () => {
+  const ids = [...draftPick].filter(id => cards.some(c => c.id === id && !c.published));
+  if (!ids.length) return say($("c-pstatus"), "Coche d'abord les cartes à publier.", false);
+  const b = $("c-pub");
+  if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = `Confirmer : publier ${ids.length} carte${ids.length > 1 ? "s" : ""}`; setTimeout(() => { delete b.dataset.armed; b.textContent = "Publier les cartes cochées"; }, 4000); return; }
+  delete b.dataset.armed; b.textContent = "Publier les cartes cochées";
+  const { error } = await SB.from("cards").update({ published: true, updated_at: new Date().toISOString() }).in("id", ids);
+  if (error) return say($("c-pstatus"), "Erreur : " + error.message, false);
+  ids.forEach(id => draftPick.delete(id));
+  say($("c-pstatus"), `${ids.length} carte${ids.length > 1 ? "s" : ""} publiée${ids.length > 1 ? "s" : ""} : elles entrent dans les boosters dès maintenant.`);
+  await loadCards();
+};
 $("c-search").oninput = renderCards;
 $("c-list").onclick = e => { const t = e.target.closest(".ctile"); if (t) openEditor(cards.find(c => c.id === +t.dataset.id)); };
 $("c-new").onclick = () => openEditor({ id: Math.max(0, ...cards.map(c => c.id)) + 1, name: "", type: "Trad's", rarity: "commune", sub: "", fams: "", text: "", published: false, _new: true });
