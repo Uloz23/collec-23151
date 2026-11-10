@@ -2,7 +2,12 @@
 // Il ne met rien en cache : tout vient toujours du réseau, donc les mises à jour sont immédiates.
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", e => e.waitUntil(self.clients.claim()));
-self.addEventListener("fetch", e => { e.respondWith(fetch(e.request)); });
+// Pour les fichiers du site, on redemande toujours au serveur s'il y a du nouveau (sinon le téléphone peut garder
+// l'ancienne version jusqu'à 10 minutes après une mise à jour). Les images et sons de Supabase restent en cache normal.
+self.addEventListener("fetch", e => {
+  const same = new URL(e.request.url).origin === self.location.origin;
+  e.respondWith(same && e.request.method === "GET" ? fetch(e.request, { cache: "no-cache" }) : fetch(e.request));
+});
 
 // Notification reçue du serveur
 self.addEventListener("push", e => {
