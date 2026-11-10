@@ -1580,7 +1580,10 @@ function renderTrades() {
   box.dataset.seen = incIds;
   const list = $("trade-list"); list.innerHTML = "";
   const STATUS = { acceptee: "Échange fait ✓", refusee: "Refusé", annulee: "Annulé", expiree: "Expiré", modifiee: "Remplacé par une nouvelle proposition", impossible: "Impossible : une des cartes n'était plus là" };
-  trades.filter(t => t.status !== "modifiee").forEach(t => {
+  // Ordre : propositions reçues en attente, puis envoyées en attente, puis les échanges terminés (du plus récent au plus ancien)
+  const rank = t => t.status === "attente" ? (t.mine ? 1 : 0) : 2;
+  const when = t => Date.parse(t.status === "attente" ? t.created_at : (t.decided_at || t.created_at));
+  trades.filter(t => t.status !== "modifiee").sort((a, b) => rank(a) - rank(b) || when(b) - when(a)).forEach(t => {
     const el = document.createElement("article"), open = t.status === "attente";
     el.className = "trade" + (open && !t.mine ? " in" : "") + (open ? "" : " done");
     const head = document.createElement("div"); head.className = "trade-head";
