@@ -1,0 +1,105 @@
+/* Rendu des cartes de la Collec' 23-151, partagé par l'appli (index.html) et le jeu (duel.html).
+   Variables attendues sur :root : --wine, --wine-deep, --parchment, --ink, --gold, --f-gadz, --f-label, --fams… */
+/* ---------- Carte ---------- */
+.card { container-type: inline-size; position: relative; isolation: isolate; transform: translateZ(0); -webkit-backface-visibility: hidden; backface-visibility: hidden; width: 100%; aspect-ratio: 63 / 88; border-radius: 4.6% / 3.3%; overflow: hidden; box-shadow: 0 10px 24px -10px rgba(0,0,0,.8), 0 0 0 1px rgba(212,178,106,.25); }
+.card { --c-edge: #b8b0a2; --c-bar1: #f4efe6; --c-bar2: #cfc6b6; --c-num: #e6dfd2; }
+.v-doree { --c-edge: #fff1c2; --c-bar1: #fffaf0; --c-bar2: #e9c768; --c-num: #fff1c2; }
+.card-in { position: absolute; inset: 0; padding: 3.6cqw; background: linear-gradient(160deg, #2a2320, #0e0b0a); }
+.frame {
+  position: relative; height: 100%;
+  border-radius: 2.6cqw; border: .6cqw solid var(--c-edge);
+  background: linear-gradient(var(--wine), var(--wine-deep));
+  display: grid; grid-template-rows: auto auto auto 1fr auto; gap: 2.2cqw; padding: 2.8cqw;
+  overflow: hidden;
+}
+.bar {
+  position: relative; z-index: 1; min-width: 0;
+  display: flex; justify-content: space-between; align-items: center; gap: 2cqw;
+  background: linear-gradient(180deg, var(--c-bar1), var(--c-bar2)); color: var(--ink);
+  border-radius: 2cqw / 50%; padding: 1.3cqw 3.2cqw;
+  box-shadow: inset 0 -.5cqw 0 rgba(0,0,0,.18);
+}
+.name { font-family: var(--f-gadz); font-weight: 400; font-size: 7.4cqw; line-height: 1.2; padding-top: .3cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name.long { font-size: 5.8cqw; }
+.bar.top { justify-content: center; }
+.bar.top .name { text-align: center; }
+.type { font-family: var(--f-label); font-weight: 600; font-size: 4.2cqw; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.rarity { flex: none; display: inline-block; width: 11cqw; aspect-ratio: 240 / 122; background: center / contain no-repeat; filter: drop-shadow(0 0 .25px #2a1a14) drop-shadow(0 0 .6px #2a1a14); }
+.rl-commune { background-image: url(assets/rarete-commune.png); }
+.rl-peu-commune { background-image: url(assets/rarete-peu-commune.png); }
+.rl-rare { background-image: url(assets/rarete-rare.png); }
+.rl-mythique { background-image: url(assets/rarete-mythique.png); }
+.rl-gadz { background-image: url(assets/rarete-gadz.png); }
+.art { position: relative; aspect-ratio: 4 / 3; border: .6cqw solid var(--c-edge); border-radius: .6cqw; overflow: hidden; background: #0b1426; }
+.art svg, .art img { display: block; width: 100%; height: 100%; }
+.art img { object-fit: cover; object-position: 50% 25%; }
+.notext .frame { grid-template-rows: auto 1fr auto auto; }
+.notext .art { aspect-ratio: auto; min-height: 0; }
+.textbox { min-height: 0; overflow: hidden; background: var(--parchment); color: var(--ink); border-radius: 1cqw; padding: 2.6cqw 3.6cqw; display: grid; align-content: center; font-family: var(--f-body); font-size: 4.7cqw; line-height: 1.3; text-align: center; }
+.textbox p { margin: 0; font-style: italic; text-wrap: balance; white-space: pre-line; }
+.textbox.gadz { gap: 1cqw; }
+.textbox .pn { font-family: var(--f-gadz); font-size: 17cqw; line-height: .95; color: var(--wine); }
+.textbox .pn-sub { font-size: 4.2cqw; }
+/* Taille du texte selon sa longueur, et logo de la fam's en filigrane */
+.textbox.t-xs { font-size: 8.8cqw; } .textbox.t-s { font-size: 6.9cqw; } .textbox.t-m { font-size: 5.6cqw; } .textbox.t-xl { font-size: 4.2cqw; }
+.textbox.gadz.t-xs .pn-sub, .textbox.gadz.t-s .pn-sub { font-size: 5.2cqw; }
+.textbox.gadz.t-m .pn-sub, .textbox.gadz.t-l .pn-sub { font-size: 4.4cqw; }
+.textbox.gadz.t-xl .pn-sub { font-size: 3.8cqw; }
+.textbox { position: relative; isolation: isolate; }
+.textbox::before { content: ""; position: absolute; inset: 6% 4%; z-index: -1; background: url("assets/logo-fams.png") center / contain no-repeat; opacity: .14; pointer-events: none; }
+.numbering { position: relative; z-index: 1; display: flex; justify-content: space-between; font-family: var(--f-label); font-weight: 500; font-size: 3.2cqw; letter-spacing: .1em; text-transform: uppercase; color: var(--c-num); padding-inline: 1cqw; font-variant-numeric: tabular-nums; }
+
+/* Variante textless : l'image occupe toute la carte */
+.v-textless .frame { display: flex; flex-direction: column; gap: 2cqw; }
+.v-textless .art { position: absolute; inset: 0; aspect-ratio: auto; border: 0; border-radius: 0; z-index: 0; }
+.v-textless .art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgba(10,6,6,.35), transparent 22%, transparent 60%, rgba(10,6,6,.85)); }
+.v-textless .textbox { display: none; }
+.v-textless .bar.top { margin-bottom: auto; }
+
+/* Variante dorée */
+.v-doree .card-in { background: linear-gradient(160deg, #fff1c2, #b98a2c 45%, #fbe7a6 70%, #8a6418); }
+.v-doree .frame { background: linear-gradient(160deg, #4a340f, #1d1405); border-color: #fff1c2; }
+.v-doree .bar { background: linear-gradient(180deg, #fffaf0, #e9c768); }
+.v-doree .art { border-color: #fff1c2; }
+.v-doree .frame { box-shadow: 0 0 0 .4cqw rgba(255,226,140,.55), inset 0 0 4cqw rgba(255,214,110,.35); }
+/* Dorées : scintillements (petites étoiles qui s'allument au hasard) et reflet qui balaie le cadre or */
+.sparkles { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; border-radius: inherit; }
+.sparkles i { position: absolute; width: 14cqw; aspect-ratio: 1; margin: -7cqw 0 0 -7cqw; opacity: 0;
+  filter: drop-shadow(0 0 1cqw #fff) drop-shadow(0 0 2.2cqw rgba(255,190,60,.95)); animation: twinkle var(--d, 2.4s) ease-in-out var(--w, 0s) infinite; }
+.sparkles i::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, #fff 0 30%, #fff3c4 60%, #ffd56a);
+  clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%); }
+.sparkles i.s { width: 9cqw; margin: -4.5cqw 0 0 -4.5cqw; }
+@keyframes twinkle { 0%, 62%, 100% { opacity: 0; transform: scale(.2) rotate(0deg); } 76% { opacity: 1; transform: scale(1) rotate(25deg); } 88% { opacity: .2; transform: scale(.5) rotate(45deg); } }
+.v-doree .card-in::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 60%; pointer-events: none; background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,.95) 50%, transparent 80%); transform: translateX(-120%); animation: glintx 3.4s ease-in-out infinite; }
+/* Reflet déplacé par transformation (plus léger pour les téléphones que l'animation d'un très grand fond) */
+@keyframes glintx { 0% { transform: translateX(-120%); } 60%, 100% { transform: translateX(220%); } }
+@media (prefers-reduced-motion: reduce) { .sparkles { display: none; } .v-doree .card-in::before { animation: none; } }
+
+/* Reflet brillant */
+.foil {
+  position: absolute; inset: 0; pointer-events: none; z-index: 4; opacity: 0; mix-blend-mode: screen;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,236,170,.6) 42%, rgba(170,215,255,.5) 50%, rgba(255,160,210,.45) 58%, transparent 70%);
+  background-size: 260% 260%; background-position: var(--px, 50%) 50%;
+}
+.r-mythique .foil { opacity: .28; }
+.v-brillante .foil, .v-doree .foil { opacity: .5; animation: sheen 4.5s ease-in-out infinite alternate; }
+/* Brillante : bordure irisée qui ondule, bien visible même quand on fait défiler l'album */
+.v-brillante { box-shadow: 0 10px 24px -10px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.5), -6px 0 18px -4px rgba(255,90,190,.65), 6px 0 18px -4px rgba(70,190,255,.65); }
+/* Bordure irisée : arc-en-ciel saturé qui défile + reflet blanc qui balaie la bordure */
+.v-brillante .card-in { background: linear-gradient(115deg, #ff4fa3, #ffb23f, #f4f04a, #3ef08f, #3fc8ff, #6f7bff, #c46bff, #ff4fa3, #ffb23f, #f4f04a, #3ef08f, #3fc8ff, #6f7bff, #c46bff, #ff4fa3); background-size: 200% 200%; animation: iris 3.2s linear infinite; }
+.v-brillante .card-in::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 60%; pointer-events: none; background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,.9) 50%, transparent 80%); transform: translateX(-120%); animation: glintx 2.6s ease-in-out infinite; }
+.v-brillante .frame { border-color: rgba(255,255,255,.95); }
+@keyframes iris { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+@keyframes glint { 0% { background-position: 130% 0; } 60%, 100% { background-position: -40% 0; } }
+@media (prefers-reduced-motion: reduce) { .v-brillante .card-in, .v-brillante .card-in::before { animation: none; } }
+@keyframes sheen { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
+
+/* ---------- Dos de carte ---------- */
+.cardback { container-type: inline-size; position: relative; width: 100%; aspect-ratio: 63 / 88; border-radius: 4.6% / 3.3%; overflow: hidden; box-shadow: 0 10px 24px -10px rgba(0,0,0,.8); }
+.cardback-in { position: absolute; inset: 0; padding: 3.6cqw; background: linear-gradient(160deg, #2a2320, #0e0b0a); }
+.cardback-face { position: relative; height: 100%; border: .6cqw solid #b8b0a2; border-radius: 2.6cqw; background: radial-gradient(circle at 50% 45%, #7a1f33, var(--wine-deep) 72%); display: grid; place-items: center; }
+.cardback-face::before { content: ""; position: absolute; inset: 3cqw; border: .3cqw solid rgba(230,223,210,.35); border-radius: 1.6cqw; }
+.cardback-logo { width: 64cqw; aspect-ratio: 240 / 122; background: url(assets/logo-fams.png) center / contain no-repeat; filter: drop-shadow(0 0 2cqw rgba(0,0,0,.6)); }
+.cardback-am { position: absolute; inset: 9cqw 12cqw; background: url(assets/am.png) center / contain no-repeat; opacity: .55; filter: brightness(0); }
+.cardback-logo { position: relative; z-index: 1; width: 52cqw !important; filter: drop-shadow(0 0 2.5cqw rgba(40,8,16,.95)) drop-shadow(0 0 1cqw rgba(0,0,0,.7)) !important; }
+
