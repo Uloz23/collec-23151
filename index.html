@@ -753,7 +753,8 @@ async function loadCards() {
   if (st && st.data && st.data.edition) EDITION = st.data.edition;
   TRADE_SAME = !(st && st.data && st.data.trade_same_variant === false);
   if (st && st.data && Array.isArray(st.data.trade_groups)) TRADE_GROUPS = st.data.trade_groups;
-  CARDS = cards.map(mapCard);
+  // Une carte dépubliée dans l'admin disparaît pour les joueurs (album, compteurs, échanges), même si quelqu'un l'a déjà
+  CARDS = cards.filter(c => c.published !== false).map(mapCard);
   CARDS = sortCards(CARDS); CARDS.forEach((c, i) => { c.num = i + 1; });
 }
 function mapCard(c) {
