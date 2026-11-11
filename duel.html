@@ -194,6 +194,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .xsel .btn { flex: 0 0 56px; font-size: 26px; padding: 6px; }
 .xsel output { font-family: var(--f-label); font-weight: 700; font-size: 44px; color: var(--gold-soft); min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
 .c .cpb { position: absolute; top: -6px; left: -6px; z-index: 3; padding: 1px 5px; border-radius: 999px; font: 700 10px/1.3 var(--f-label); letter-spacing: .04em; background: #5ac8d8; color: #062a30; box-shadow: 0 1px 3px rgba(0,0,0,.6); }
+.c.mini .ft .pl { font-size: .8em; letter-spacing: -.01em; }
 .compte { font-family: var(--f-label); font-size: 13px; color: var(--muted); letter-spacing: .04em; }
 </style>
 </head>
@@ -287,6 +288,9 @@ try { const r = JSON.parse(localStorage.getItem("duel23151-reglages") || "null")
 const moi = () => g.joueurs[0], ia = () => g.joueurs[1];
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
 const pause = ms => new Promise(r => setTimeout(r, ms));
+// Génération (Pn) comme sur les cartes de la Collec' : .onscrit = P1, Ancien = P2, puis P3, P4…
+const pNum = d => { if (d.type !== "Gadz" || d.proche) return null; if (d.conscrit) return 1; const db = DB[d.id]; const p = db && Rendu.pOf(db); return p || (Rendu.pOf({ type: "Gadz", sub: "Bo" + d.prom }) || null); };
+const pn = d => { const p = pNum(d); if (p == null) return d.proche || d.type; return p <= 1 ? ".onscrit" : p === 2 ? "Ancien" : "P" + p; };
 const promTxt = d => d.conscrit ? ".onscrit" : d.proche ? d.proche : d.type === "Gadz" ? "Bo" + d.prom : d.type;
 
 // ---------- Rendu d'une carte ----------
@@ -318,7 +322,7 @@ function carteJeu(c, opts = {}) {
   b.type = "button"; b.className = "c" + (d.proche ? " proche" : "") + (c.engage ? " engage" : "");
   b.dataset.t = d.type; b.dataset.uid = c.uid;
   const coutAff = opts.cout != null ? opts.cout : (d.type === "Gadz" ? (d.cost || null) : d.cost);
-  b.innerHTML = `${coutAff ? `<span class="cost">${coutAff}</span>` : ""}<span class="nm">${esc(d.name)}</span><span class="tx">${esc(d.text)}</span><span class="ft"><span>${esc(opts.court && d.type === "Gadz" && !d.proche && !d.conscrit ? String(d.prom) : opts.court && d.conscrit ? ".o.26" : promTxt(d))}</span><i class="rar ${d.rar}"></i></span>`;
+  b.innerHTML = `${coutAff ? `<span class="cost">${coutAff}</span>` : ""}<span class="nm">${esc(d.name)}</span><span class="tx">${esc(d.text)}</span><span class="ft"><span${opts.court && pn(d).length > 6 ? ' class="pl"' : ""}>${esc(opts.court ? pn(d) : promTxt(d))}</span><i class="rar ${d.rar}"></i></span>`;
   if (d.conscrit) b.insertAdjacentHTML("beforeend", `<span class="recus">${c.recus || 0}/3</span>`);
   if (opts.zone && c.cpDe && c.cpDe.length) b.insertAdjacentHTML("beforeend", `<span class="cpb" title="Effet copié par CP">+CP</span>`);
   if (opts.zone) {
@@ -411,7 +415,7 @@ function fiche(c, p, ou) {
   (c.cpDe || []).forEach(id => { const d2 = M.PAR_ID[id]; if (d2) etat.push(`CP : a aussi l'effet de ${d2.name} (« ${d2.text} »)`); });
   if (ou !== "main" && d.type === "Gadz" && M.protege(g, p, c)) etat.push("protégé des Manip' adverses");
   const vis = DB[d.id] ? vraieEl(c, DB[d.id], { cout: d.costX ? "X" : d.type === "Gadz" ? (d.cost || null) : M.cout(g, p, c) }).outerHTML : "";
-  const v = feuille(`<div class="fiche-haut">${vis}<div class="txt"><div class="sous">${esc(d.type)}${d.type === "Gadz" ? " · " + esc(promTxt(d)) : ""} · ${esc(d.rar)}</div><h2>${esc(d.name)}</h2><p>${esc(d.text)}</p>${etat.length ? `<p class="sous" style="text-transform:none;letter-spacing:0">${etat.map(esc).join(" · ")}</p>` : ""}</div></div><div class="row">${acts.join("")}<button class="btn" data-a="x" type="button">Fermer</button></div>`);
+  const v = feuille(`<div class="fiche-haut">${vis}<div class="txt"><div class="sous">${esc(d.type)}${d.type === "Gadz" ? " · " + esc(promTxt(d)) + (pNum(d) && !d.conscrit ? " · " + esc(pn(d)) : "") : ""} · ${esc(d.rar)}</div><h2>${esc(d.name)}</h2><p>${esc(d.text)}</p>${etat.length ? `<p class="sous" style="text-transform:none;letter-spacing:0">${etat.map(esc).join(" · ")}</p>` : ""}</div></div><div class="row">${acts.join("")}<button class="btn" data-a="x" type="button">Fermer</button></div>`);
   v.querySelectorAll("[data-a]").forEach(b => b.onclick = async () => {
     const act = b.dataset.a; fermer(v);
     if (act === "jouer") { occupe = true; rendre(); await M.jouer(g, p, c, choixHumain); occupe = false; apres(); }
