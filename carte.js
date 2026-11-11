@@ -63,7 +63,7 @@ function cardEl(card, variant = "normale") {
   el.className = `card r-${card.rarity} v-${variant}${variant === "doree" ? " v-textless" : ""}`;
   const u = ++uidc;
   el.innerHTML = `<div class="card-in"><div class="frame">
-    <div class="bar top"><span class="name${nameSize(card.name)}">${esc(card.name)}</span></div>
+    <div class="bar top"><span class="name${nameSize(card.name)}">${esc(card.name.replace(/[\u00a0\u202f]/g, " "))}</span></div>
     <div class="art">${photoOf(card) ? `<img src="${full && photoOf(card).textless ? photoOf(card).textless : photoOf(card).normale}" alt="">` : ART[card.art](u, card.hue, { bg: card.colors.bg, fg: card.colors.fg })}</div>
     <div class="bar mid"><span class="type">${hasAudio(card) ? "♪ " : ""}${card.kind ? esc(card.type) + " – " + esc(card.kind) : esc(card.type) + (card.sub ? " · " + esc(card.sub) : "")}</span><span class="rarity rl-${card.rarity}" role="img" aria-label="${RLABEL[card.rarity]}"></span></div>
     ${textboxHTML(card)}
