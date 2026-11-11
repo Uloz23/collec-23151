@@ -78,7 +78,7 @@ const CARTES = [
   C(59, "Biaude", "Trad's", "commune", 1, ["biaude_pts"], "Au boulot : marque 1 point par carte que tu as engagée pour de la ressource ce tour (3 maximum)."),
   C(60, "Carn's", "Trad's", "commune", 1, ["draw:2"], "Défausse 1 carte de ta main. Pioche 2 cartes.", { defausse: 1 }),
   C(61, "Gala des Fignos", "Trad's", "rare", 3, ["gala"], "Coûte 1 de moins par Gadz de ta zone tuyssé ce tour. Marque 2 points par Gadz de ta zone tuyssé ce tour."),
-  C(62, "La Rochefouc's", "Trad's", "mythique", 3, ["rochefoucs"], "Marque 1 point par tuyssage fait ce tour, puis dégage tous tes Gadz."),
+  C(62, "La Rochefouc's", "Trad's", "mythique", 3, ["rochefoucs"], "Le fondateur : marque 2 points par tuyssage fait ce tour, puis dégage tous tes Gadz."),
   C(63, "Bandes", "Trad's", "commune", 1, ["untap:2"], "Défausse 1 carte de ta main. Dégage jusqu'à 2 de tes Gadz.", { defausse: 1 }),
   C(64, "Gnassage", "Trad's", "commune", 0, ["gnassage"], "Défausse 1 carte de ta main. Au début de ton prochain tour, gagne 3 ressources.", { defausse: 1 }),
   C(65, "GGT", "Trad's", "peu-commune", 1, ["ggt"], "Ce tour-ci, un de tes Gadz peut tuysser 2 Gadz plus jeunes au lieu d'un seul, et ses tuyssages rapportent +1 point."),
@@ -88,7 +88,7 @@ const CARTES = [
   C(73, "Pin's Trad's", "Trad's", "commune", 1, ["pins_pts"], "Défausse 1 carte de ta main. Marque 1 point par Trad's dans ton K'jib (4 maximum).", { defausse: 1 }),
 
   // Carte provisoire pour tester une « remise à zéro » (pas encore dans la Collec')
-  C(900, "Vacances d'été", "Trad's", "rare", 4, ["vacances"], "Le tabagn's se vide : tous les Gadz, Za et Zon des deux joueurs retournent dans la main de leur propriétaire. Puis c'est ta rentrée : pose aussitôt jusqu'à 3 Gadz de ta main.", { provisoire: true }),
+  C(900, "Vacances d'été", "Trad's", "rare", 4, ["vacances"], "Le tabagn's se vide : tous les Gadz, Za et Zon des deux joueurs retournent dans la pioche de leur propriétaire, qui la mélange.", { provisoire: true }),
 
   // Manip' (jouables à tout moment)
   C(71, "Sandwich Couscous", "Manip'", "commune", 0, ["sandwich"], "Défausse 1 carte de ta main. Engage un de tes Gadz dégagés : il donne 2 ressources de plus.", { defausse: 1 }),

@@ -382,7 +382,7 @@ async function effet(g, p, c, choix, cible, cible2) {
       }
       case "biaude": cible.biaude = g.tour + 1; log(g, `Biaude sur ${cible.def.name}.`); break;
       case "gala": gagner(g, p, 2 * p.zone.filter(x => p.tempo.tuysses.has(x.uid)).length, "cartes", "Gala des Fignos"); break;
-      case "rochefoucs": gagner(g, p, p.tempo.tuyssages, "cartes", "La Rochefouc's"); for (const x of p.zone) { x.engage = false; x.tuysseCnt = 0; x.viaTuysse = false; } log(g, `Tous les Gadz de ${p.nom} sont dégagés.`); break;
+      case "rochefoucs": gagner(g, p, 2 * p.tempo.tuyssages, "cartes", "La Rochefouc's"); for (const x of p.zone) { x.engage = false; x.tuysseCnt = 0; x.viaTuysse = false; } log(g, `Tous les Gadz de ${p.nom} sont dégagés.`); break;
       case "gnassage": p.prochain.res = (p.prochain.res || 0) + 3; break;
       case "ggt": cible.tuysseMax += 1; cible.ggtBonus = g.tour; if (cible.engage && cible.viaTuysse) { /* peut encore tuysser */ } log(g, `GGT : ${cible.def.name} peut tuysser une fois de plus ce tour.`); break;
       case "weeks_p3": for (const j of g.joueurs) { const n = j.main.length; j.pioche.push(...j.main.splice(0)); melanger(g, j.pioche); piocher(g, j, n + (j === p ? 1 : 0)); } log(g, `Week's P3 : tout le monde repioche !`); gagner(g, p, 1, "cartes", "Week's P3"); break;
@@ -392,12 +392,20 @@ async function effet(g, p, c, choix, cible, cible2) {
       case "sandwich": await engager(g, p, cible, null, 2); break;
       case "jetplacks": for (const x of [].concat(cible).slice(0, 2)) { if (!protege(g, o, x)) { x.engage = true; log(g, `${x.def.name} est engagé (quillons !).`); } } break;
       case "vacances": {
-        for (const j of g.joueurs) for (const x of j.zone.filter(y => y.def.type === "Gadz")) quitterZone(g, j, x);
-        log(g, `Vacances d'été : tous les Gadz retournent en main.`, "warn");
-        // La rentrée : celui qui l'a jouée repose aussitôt jusqu'à 3 Gadz
-        const dispo = p.main.filter(vrai_gadz).filter((x, i, l) => l.findIndex(y => y.def.id === x.def.id) === i);
-        const pris = await choix(g, p, { carte: c, type: "weeks", options: dispo, n: 3 }) || [];
-        for (const x of [].concat(pris).slice(0, 3)) { p.main.splice(p.main.indexOf(x), 1); await arriver(g, p, x); }
+        // Tous les Gadz (des deux joueurs) quittent la zone de manip' : au K'jib (par défaut), dans la pioche ou en main
+        const mode = g.opts.vacances || "pioche";
+        for (const j of g.joueurs) for (const x of j.zone.filter(y => y.def.type === "Gadz")) {
+          if (mode === "main" || mode === "main+3") { quitterZone(g, j, x); continue; }
+          j.zone.splice(j.zone.indexOf(x), 1); x.engage = false; x.extraFx = []; x.pinsBonus = 0;
+          if (mode === "pioche") j.pioche.push(x); else j.kjib.push(x);
+        }
+        if (mode === "pioche") g.joueurs.forEach(j => melanger(g, j.pioche));
+        log(g, mode === "pioche" ? "Vacances d'été : tous les Gadz retournent dans les pioches." : mode === "kjib" ? "Vacances d'été : tous les Gadz partent au K'jib." : "Vacances d'été : tous les Gadz retournent en main.", "warn");
+        if (mode === "main+3") {
+          const dispo = p.main.filter(vrai_gadz).filter((x, i, l) => l.findIndex(y => y.def.id === x.def.id) === i);
+          const pris = await choix(g, p, { carte: c, type: "weeks", options: dispo, n: 3 }) || [];
+          for (const x of [].concat(pris).slice(0, 3)) { p.main.splice(p.main.indexOf(x), 1); await arriver(g, p, x); }
+        }
         break;
       }
       case "hymne": p.tempo.hymne = true; log(g, `Hymne : ce tour-ci, chaque tuyssage rapporte +1.`); gagner(g, p, p.tempo.tuyssages, "cartes", "Hymne, tuyssages déjà faits"); break;
@@ -478,7 +486,7 @@ function estimer(g, p, c) {
     case "patator": return o.zone.filter(vrai_gadz).length ? 1.8 : 0;
     case "biaude": return .9;
     case "gala": return 2 * p.zone.filter(x => p.tempo.tuysses.has(x.uid)).length;
-    case "rochefoucs": return p.tempo.tuyssages + p.zone.filter(vrai_gadz).length * .7;
+    case "rochefoucs": return 2 * p.tempo.tuyssages + p.zone.filter(vrai_gadz).length * .7;
     case "gnassage": return 1.6;
     case "ggt": return nG >= 3 ? 2 : 0;
     case "weeks_p3": return p.main.length <= 2 ? 2.3 : 1.2;
