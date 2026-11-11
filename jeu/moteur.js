@@ -362,7 +362,7 @@ async function effet(g, p, c, choix, cible, cible2) {
     switch (code) {
       case "draw": piocher(g, p, +arg); break;
       case "untap": await degager(g, p, null, +arg, c.def.name); break;
-      case "zamat": await regarder3(g, p, "Zamat", "dessus"); p.tempo.zamat = true; break;
+      case "zamat": await regarder3(g, p, "Zamat", "dessous"); p.tempo.zamat = true; break;
       case "weeks_fams": {
         const dispo = [...p.main.filter(vrai_gadz), ...p.kjib.filter(vrai_gadz)].filter((x, i, l) => !p.zone.some(z => z.def.id === x.def.id) && l.findIndex(y => y.def.id === x.def.id) === i);
         const pris = await choix(g, p, { carte: c, type: "weeks", options: dispo, n: 2 }) || [];

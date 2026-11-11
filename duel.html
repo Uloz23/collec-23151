@@ -188,6 +188,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .grille.multi > * { opacity: .5; transition: opacity .15s, transform .15s; }
 .grille.multi > .choisi { opacity: 1; transform: translateY(-8px); outline: 3px solid var(--good); outline-offset: 3px; box-shadow: 0 0 18px rgba(127,210,154,.7); }
 .grille.multi > .choisi::after { content: "✓"; position: absolute; top: -10px; left: -10px; z-index: 7; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--good); color: #0d2414; font: 700 15px/1 var(--f-label); box-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.lecture { margin: 0; min-height: 3em; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.04); border: 1px solid var(--line); font-size: 14.5px; line-height: 1.4; }
+.lecture b { font-family: var(--f-gadz); font-weight: 400; color: var(--gold-soft); font-size: 16px; }
 .compte { font-family: var(--f-label); font-size: 13px; color: var(--muted); letter-spacing: .04em; }
 </style>
 </head>
@@ -219,8 +221,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <script src="config.js?v=3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="carte.js?v=1"></script>
-<script src="jeu/cartes.js?v=4"></script>
-<script src="jeu/moteur.js?v=7"></script>
+<script src="jeu/cartes.js?v=8"></script>
+<script src="jeu/moteur.js?v=8"></script>
 <script>
 const M = window.Moteur;
 const $ = id => document.getElementById(id);
@@ -437,12 +439,24 @@ function choixHumain(g, p, q) {
   return new Promise(res => {
     const titres = { defausse: "Quelle carte défausser ?", cible: "Choisis la cible", source: "Quel effet copier ?", weeks: `Quels Gadz poser ? (${q.n} max)`, degager: q.n > 1 ? `Quels Gadz dégager ? (${q.n} max)` : "Quel Gadz dégager ?", regarder: q.reste === "dessus" ? "Quelle carte piocher ? (les autres restent sur ta pioche)" : "Quelle carte garder ? (les autres vont sous ta pioche)", monome: `Qui forme le monôme ? (${q.n > 20 ? "tous" : q.n + " max"})` };
     if (q.type === "monome" && q.n > 20) return res(q.options);
-    const multi = q.n > 1;
-    const v = feuille(`<div class="sous">${esc(q.carte.def.name)}</div><h2>${titres[q.type] || "Choisis"}</h2><div class="grille" id="ch-g"></div><div class="row"><button class="btn go" data-a="ok" type="button" ${multi ? "" : "hidden"}>Valider</button><button class="btn" data-a="non" type="button">Annuler</button></div>`, { bloquant: true });
-    const sel = new Set(), gr = v.querySelector("#ch-g"); if (multi) gr.classList.add("multi");
+    const multi = q.n > 1, exact = q.type === "defausse";
+    // On touche une carte pour la sélectionner et lire son effet, puis on valide
+    const v = feuille(`<div class="sous">${esc(q.carte.def.name)}</div><h2>${titres[q.type] || "Choisis"}</h2><div class="grille ${multi ? "multi" : "multi un"}" id="ch-g"></div><p class="lecture" id="ch-l">Touche une carte pour lire son effet et la sélectionner.</p><div class="row"><button class="btn go" data-a="ok" type="button" disabled>Valider</button><button class="btn" data-a="non" type="button">Annuler</button></div>`, { bloquant: true });
+    const sel = new Set(), gr = v.querySelector("#ch-g"), ok = v.querySelector('[data-a="ok"]'), lec = v.querySelector("#ch-l");
     const pleine = q.type === "regarder" || q.type === "defausse" || q.type === "weeks";
-    q.options.forEach(c => { const el = pleine ? carteEl(c, {}) : carteEl(c, { zone: true, court: true, mini: true }); if (!pleine) el.classList.add("mini"); el.onclick = () => { if (!multi) { fermer(v); res(c); return; } if (sel.has(c)) sel.delete(c); else if (sel.size < q.n) sel.add(c); el.classList.toggle("choisi", sel.has(c)); }; gr.appendChild(el); });
-    v.querySelector('[data-a="ok"]').onclick = () => { fermer(v); res([...sel]); };
+    const maj = () => { ok.disabled = exact ? sel.size !== q.n : sel.size < 1; gr.querySelectorAll(":scope > *").forEach(el => el.classList.toggle("choisi", [...sel].some(c => c.uid === +el.dataset.uid))); };
+    q.options.forEach(c => {
+      const el = pleine ? carteEl(c, {}) : carteEl(c, { zone: true, court: true, mini: true }); if (!pleine) el.classList.add("mini");
+      el.dataset.uid = c.uid;
+      el.onclick = () => {
+        lec.innerHTML = `<b>${esc(c.def.name)}</b> · ${esc(c.def.type)}${c.def.type === "Gadz" && !c.def.proche ? " " + esc(promTxt(c.def)) : ""} — ${esc(c.def.text)}`;
+        if (!multi) { sel.clear(); sel.add(c); }
+        else if (sel.has(c)) sel.delete(c); else if (sel.size < q.n) sel.add(c);
+        maj();
+      };
+      gr.appendChild(el);
+    });
+    ok.onclick = () => { fermer(v); res(multi ? [...sel] : [...sel][0]); };
     v.querySelector('[data-a="non"]').onclick = () => { fermer(v); res(null); };
   });
 }
