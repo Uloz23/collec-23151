@@ -55,7 +55,9 @@ function sparklesHTML() {
   return `<div class="sparkles" aria-hidden="true">${h}</div>`;
 }
 // Taille du nom selon sa longueur : au-delà de 22 caractères, il passe sur deux lignes
-const nameSize = n => n.length > 40 ? " long2 xl" : n.length > 22 ? " long2" : n.length > 15 ? " long" : "";
+// « // » dans le nom force le retour à la ligne à cet endroit
+const nameSize = n => { const parts = n.split("//"); if (parts.length > 1) { const m = Math.max(...parts.map(x => x.trim().length)); return m > 26 ? " long2 xl" : " long2"; } return n.length > 40 ? " long2 xl" : n.length > 22 ? " long2" : n.length > 15 ? " long" : ""; };
+const nameHTML = n => n.replace(/[\u00a0\u202f]/g, " ").split("//").map(x => esc(x.trim())).join("<br>");
 function cardEl(card, variant = "normale") {
   const el = document.createElement("div");
   // Les dorées sont aussi en pleine carte (mise en page textless + cadre or)
@@ -63,7 +65,7 @@ function cardEl(card, variant = "normale") {
   el.className = `card r-${card.rarity} v-${variant}${variant === "doree" ? " v-textless" : ""}`;
   const u = ++uidc;
   el.innerHTML = `<div class="card-in"><div class="frame">
-    <div class="bar top"><span class="name${nameSize(card.name)}">${esc(card.name.replace(/[\u00a0\u202f]/g, " "))}</span></div>
+    <div class="bar top"><span class="name${nameSize(card.nameRaw || card.name)}">${nameHTML(card.nameRaw || card.name)}</span></div>
     <div class="art">${photoOf(card) ? `<img src="${full && photoOf(card).textless ? photoOf(card).textless : photoOf(card).normale}" alt="">` : ART[card.art](u, card.hue, { bg: card.colors.bg, fg: card.colors.fg })}</div>
     <div class="bar mid"><span class="type">${hasAudio(card) ? "♪ " : ""}${card.kind ? esc(card.type) + " – " + esc(card.kind) : esc(card.type) + (card.sub ? " · " + esc(card.sub) : "")}</span><span class="rarity rl-${card.rarity}" role="img" aria-label="${RLABEL[card.rarity]}"></span></div>
     ${textboxHTML(card)}

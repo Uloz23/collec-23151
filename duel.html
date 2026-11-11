@@ -8,7 +8,7 @@
 <link rel="icon" href="assets/icone-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=EB+Garamond:ital,wght@0,400;0,600;1,400&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="carte.css?v=3">
+<link rel="stylesheet" href="carte.css?v=4">
 <style>
 @font-face { font-family: "Zagots"; src: url(assets/zagots.ttf) format("truetype"); font-display: block; }
 /* Plateau de jeu sombre façon Collec' : bordeaux profond, or, parchemin. L'adversaire en haut, toi en bas, la main en pied d'écran. */
@@ -227,7 +227,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 <script src="config.js?v=3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="carte.js?v=3"></script>
+<script src="carte.js?v=4"></script>
 <script src="jeu/cartes.js?v=10"></script>
 <script src="jeu/moteur.js?v=9"></script>
 <script>
@@ -244,7 +244,7 @@ let CARDS = [], DB = {}, OWNED = {}, PSEUDO = null;
 const Rendu = window.CarteRendu({ total: () => CARDS.length, hasAudio: c => !!c.audio, RLABEL });
 function mapCard(c) {
   return ({
-    id: c.id, name: c.name, type: c.type, sub: c.sub || "", colors: { bg: /^#[0-9a-f]{6}$/i.test(c.color_bg || "") ? c.color_bg : null, fg: /^#[0-9a-f]{6}$/i.test(c.color_fg || "") ? c.color_fg : null }, kind: (c.kind || "").trim(), fams: c.fams || "", rarity: c.rarity,
+    id: c.id, name: c.name.replace(/\s*\/\/\s*/g, " "), nameRaw: c.name, type: c.type, sub: c.sub || "", colors: { bg: /^#[0-9a-f]{6}$/i.test(c.color_bg || "") ? c.color_bg : null, fg: /^#[0-9a-f]{6}$/i.test(c.color_fg || "") ? c.color_fg : null }, kind: (c.kind || "").trim(), fams: c.fams || "", rarity: c.rarity,
     art: c.art === "bordels" ? "bordels" : ({ "Gadz": "gadz", "Trad's": "trad", "Chant": "chant", "Manip'": "manip", "Tabagn's": "tabagn" }[c.type] || c.art || "trad"), hue: c.hue ?? 30, text: c.text || "",
     photo: (c.photo_normale || c.photo_textless) ? { normale: media(c.photo_normale || c.photo_textless), textless: media(c.photo_textless || c.photo_normale) } : null,
     audio: null
