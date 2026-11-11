@@ -195,6 +195,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .xsel output { font-family: var(--f-label); font-weight: 700; font-size: 44px; color: var(--gold-soft); min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
 .c .cpb { position: absolute; top: -6px; left: -6px; z-index: 3; padding: 1px 5px; border-radius: 999px; font: 700 10px/1.3 var(--f-label); letter-spacing: .04em; background: #5ac8d8; color: #062a30; box-shadow: 0 1px 3px rgba(0,0,0,.6); }
 .c.mini .ft .pl { font-size: .8em; letter-spacing: -.01em; }
+.cost.reduit { background: radial-gradient(circle at 35% 30%, #e6ffe9, #7fd29a 60%, #3d8a55) !important; color: #0d2414 !important; }
+.cost.reduit s { position: absolute; top: 50%; right: calc(100% + 2px); transform: translateY(-50%); font-size: 10px; font-weight: 600; color: var(--parch); background: var(--nuit); border: 1px solid var(--line); border-radius: 999px; padding: 0 4px; line-height: 1.4; text-decoration: line-through; }
 .compte { font-family: var(--f-label); font-size: 13px; color: var(--muted); letter-spacing: .04em; }
 </style>
 </head>
@@ -226,7 +228,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <script src="config.js?v=3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="carte.js?v=1"></script>
-<script src="jeu/cartes.js?v=9"></script>
+<script src="jeu/cartes.js?v=10"></script>
 <script src="jeu/moteur.js?v=9"></script>
 <script>
 const M = window.Moteur;
@@ -300,12 +302,19 @@ function carteEl(c, opts = {}) {
   if (db && !opts.mini) return vraieEl(c, db, opts);
   return carteJeu(c, opts);
 }
+// Pastille de coût : verte, avec le coût de base barré, quand un effet la réduit
+function pastille(c, k) {
+  if (k == null || k === "" || (k === 0 && !c.def.cost)) return "";
+  const base = c.def.cost;
+  if (typeof k === "number" && c.def.type !== "Gadz" && k < base) return `<span class="cost reduit" title="Coût réduit (de base : ${base})">${k}<s>${base}</s></span>`;
+  return `<span class="cost">${k}</span>`;
+}
 // Vraie carte de la Collec', dans la version que tu possèdes
 function vraieEl(c, db, opts) {
   const b = document.createElement("button"); b.type = "button"; b.className = "cv"; b.dataset.uid = c.uid;
   b.appendChild(Rendu.cardEl(db, versionDe(c)));
   const k = opts.cout != null ? opts.cout : (c.def.type === "Gadz" ? (c.def.cost || null) : c.def.cost);
-  if (k) b.insertAdjacentHTML("afterbegin", `<span class="cost">${k}</span>`);
+  b.insertAdjacentHTML("afterbegin", pastille(c, k));
   b.setAttribute("aria-label", `${c.def.name}, ${c.def.type}`);
   return b;
 }
@@ -322,7 +331,7 @@ function carteJeu(c, opts = {}) {
   b.type = "button"; b.className = "c" + (d.proche ? " proche" : "") + (c.engage ? " engage" : "");
   b.dataset.t = d.type; b.dataset.uid = c.uid;
   const coutAff = opts.cout != null ? opts.cout : (d.type === "Gadz" ? (d.cost || null) : d.cost);
-  b.innerHTML = `${coutAff ? `<span class="cost">${coutAff}</span>` : ""}<span class="nm">${esc(d.name)}</span><span class="tx">${esc(d.text)}</span><span class="ft"><span${opts.court && pn(d).length > 6 ? ' class="pl"' : ""}>${esc(opts.court ? pn(d) : promTxt(d))}</span><i class="rar ${d.rar}"></i></span>`;
+  b.innerHTML = `${pastille(c, coutAff)}<span class="nm">${esc(d.name)}</span><span class="tx">${esc(d.text)}</span><span class="ft"><span${opts.court && pn(d).length > 6 ? ' class="pl"' : ""}>${esc(opts.court ? pn(d) : promTxt(d))}</span><i class="rar ${d.rar}"></i></span>`;
   if (d.conscrit) b.insertAdjacentHTML("beforeend", `<span class="recus">${c.recus || 0}/3</span>`);
   if (opts.zone && c.cpDe && c.cpDe.length) b.insertAdjacentHTML("beforeend", `<span class="cpb" title="Effet copié par CP">+CP</span>`);
   if (opts.zone) {
@@ -358,7 +367,7 @@ function rendre() {
   }
   for (const [p, id] of [[ia(), "tab-ia"], [moi(), "tab-moi"]]) { const s = $(id); s.textContent = p.tab ? p.tab.def.name : "vide"; s.className = "slot" + (p.tab ? " plein" : ""); s.onclick = p.tab ? () => fiche(p.tab, p) : null; }
   const m = $("main"); m.innerHTML = "";
-  moi().main.forEach(c => { const k = c.def.costX ? "X" : c.def.type === "Gadz" ? c.def.cost : M.cout(g, moi(), c); const el = carteEl(c, { cout: k || null }); if (g.actif === 0 && !occupe && M.jouable(g, moi(), c)) el.classList.add("jouable"); el.onclick = () => fiche(c, moi(), "main"); m.appendChild(el); });
+  moi().main.forEach(c => { const k = c.def.costX ? "X" : c.def.type === "Gadz" ? c.def.cost : M.cout(g, moi(), c); const el = carteEl(c, { cout: k }); if (g.actif === 0 && !occupe && M.jouable(g, moi(), c)) el.classList.add("jouable"); el.onclick = () => fiche(c, moi(), "main"); m.appendChild(el); });
   const p = moi(), types = ["Chant", "Trad's", "Manip'", "Tabagn's"].filter(t => p.pool[t]);
   let hint = "";
   if (g.fini) hint = "Partie terminée";

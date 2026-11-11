@@ -69,7 +69,7 @@ const CARTES = [
   // Trad's
   C(51, "Pian's", "Trad's", "rare", 1, ["draw:1", "untap:1"], "Défausse 1 carte de ta main. Pioche 1 carte et dégage 1 de tes Gadz.", { defausse: 1 }),
   C(52, "Zamat", "Trad's", "commune", 1, ["zamat"], "Regarde les 3 cartes du dessus de ta pioche, prends-en 1 et mets les autres dessous. Ce tour-ci, GGT coûte 1 de moins."),
-  C(53, "Week's Fam's", "Trad's", "rare", 3, ["weeks_fams"], "Pose jusqu'à 2 Gadz depuis ta main ou ton K'jib. Ils peuvent tuysser tout de suite."),
+  C(53, "Week's Fam's", "Trad's", "rare", 2, ["weeks_fams"], "Pose jusqu'à 2 Gadz depuis ta main ou ton K'jib. Ils peuvent tuysser tout de suite."),
   C(54, "Crap's", "Trad's", "commune", 1, ["craps"], "Choisis un Gadz adverse : jusqu'à la fin de son prochain tour, il ne peut ni tuysser ni être tuyssé."),
   C(55, "Gorgu", "Trad's", "rare", 1, ["gorgu"], "Ce tour-ci, chacun de tes Gadz donne 2 ressources au lieu d'1."),
   C(56, "Monome", "Trad's", "commune", 1, ["pts_per_chant"], "Marque 1 point par Chant dans ton K'jib (4 maximum)."),
