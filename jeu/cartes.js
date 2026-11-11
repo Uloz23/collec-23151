@@ -40,7 +40,7 @@ const CARTES = [
   G(30, "Ast'R'X", 196, ["res_untap"], "Quand Ast'R'X donne de la ressource, dégage un autre de tes Gadz (une fois par tour)."),
   G(31, "Sergey", 194, ["arrive_young_res"], "À l'arrivée de Sergey, gagne 1 ressource par Gadz plus jeune que Sergey dans ta zone."),
   G(32, "Äk", 193, ["decade_bonus"], "Les tuyssages d'Äk rapportent +1 point par tranche de 10 prom's d'écart, au lieu du bonus habituel."),
-  G(33, "K'psul's", 185, ["double_tuysse"], "K'psul's peut tuysser deux fois par tour, avec deux Gadz plus jeunes différents."),
+  G(33, "K'psul's", 185, ["tuysse_ready"], "La première fois que K'psul's tuysse chaque tour, K'psul's ne s'engage pas."),
   // Proches : payants, hors limite, donnent de la ressource, ne tuyssent pas
   G(69, "Vic", 211, ["protect_partner"], "Za d'Uloz². Tant que Vic est en jeu, Uloz² ne peut pas être visé par les Manip' adverses.", { proche: "Za", partner: "Uloz²", cost: 1 }),
   G(70, "Guillaume", 219, ["partner_draw"], "Zon de Pordo. Quand Pordo tuysse, pioche 1 carte.", { proche: "Zon", partner: "Pordo", cost: 1 }),
@@ -86,6 +86,9 @@ const CARTES = [
   C(67, "CP", "Trad's", "peu-commune", 2, ["cp"], "Choisis un de tes Gadz : jusqu'à la fin de la partie, il gagne aussi l'effet d'un autre de tes Gadz en jeu."),
   C(68, "La 23-151", "Trad's", "mythique", 4, ["pts_per_gadz"], "Marque 1 point par Gadz dans ta zone de manip' (6 maximum)."),
   C(73, "Pin's Trad's", "Trad's", "commune", 1, ["pins_pts"], "Défausse 1 carte de ta main. Marque 1 point par Trad's dans ton K'jib (4 maximum).", { defausse: 1 }),
+
+  // Carte provisoire pour tester une « remise à zéro » (pas encore dans la Collec')
+  C(900, "Vacances d'été", "Trad's", "rare", 4, ["vacances"], "Le tabagn's se vide : tous les Gadz, Za et Zon des deux joueurs retournent dans la main de leur propriétaire. Puis c'est ta rentrée : pose aussitôt jusqu'à 3 Gadz de ta main.", { provisoire: true }),
 
   // Manip' (jouables à tout moment)
   C(71, "Sandwich Couscous", "Manip'", "commune", 0, ["sandwich"], "Défausse 1 carte de ta main. Engage un de tes Gadz dégagés : il donne 2 ressources de plus.", { defausse: 1 }),

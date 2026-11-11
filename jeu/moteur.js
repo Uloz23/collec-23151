@@ -84,7 +84,7 @@ function debutTour(g) {
   const p = g.joueurs[g.actif], o = adv(g, p);
   p.gadzPose = false; p.tempo = { tuyssages: 0, tuysses: new Set(), hymne: false, gorgu: false, zamat: false, chalons: false, premierPose: false };
   p.pool = { any: 0 };
-  for (const c of p.zone) { c.engage = false; c.tuysseCnt = 0; c.tuysseMax = a(c, "double_tuysse") ? 2 : 1; c.tuysseDuTour = false; c.untapUsed = false; c.viaTuysse = false; if (c.biaude < g.tour) c.biaude = -1; }
+  for (const c of p.zone) { c.engage = false; c.tuysseCnt = 0; c.tuysseMax = a(c, "tuysse_ready") ? 2 : 1; c.tuysseDuTour = false; c.untapUsed = false; c.viaTuysse = false; if (c.biaude < g.tour) c.biaude = -1; }
   if (p.zagJusqua != null && p.zagJusqua < g.tour) p.zagJusqua = null;
   if (p.prochain.res) { p.pool.any += p.prochain.res; log(g, `${p.nom} récupère ${p.prochain.res} ressources (Gnassage).`); p.prochain.res = 0; }
   if (p.tab && a(p.tab, "tab_bordels") && p.zone.length >= 4) gagner(g, p, 1, "cartes", "Bordel's");
@@ -186,7 +186,7 @@ function peutPoserGadz(g, p, c) {
   return !p.gadzPose;
 }
 function arriver(g, p, c, opts = {}) {
-  c.engage = false; c.arrive = g.tour; c.recus = c.recus || 0; c.tuysseCnt = 0; c.tuysseMax = a(c, "double_tuysse") ? 2 : 1;
+  c.engage = false; c.arrive = g.tour; c.recus = c.recus || 0; c.tuysseCnt = 0; c.tuysseMax = a(c, "tuysse_ready") ? 2 : 1;
   c.haste = !!opts.haste || (p.tab && a(p.tab, "tab_p3")) || (!c.def.proche && p.zone.some(x => a(x, "haste_first")) && !p.tempo.premierPose);
   if (!c.def.proche) p.tempo.premierPose = true;
   p.zone.push(c);
@@ -253,7 +253,11 @@ async function tuysser(g, p, anc, jeune, opts = {}) {
     if (annule && !peutTuysser(g, p, anc, jeune, opts.chaine)) { log(g, `Le tuyssage ${anc.def.name} → ${jeune.def.name} n'a pas lieu.`, "warn"); return false; }
   }
   const pts = pointsTuysse(g, p, anc, jeune);
-  if (!opts.chaine) { anc.engage = true; anc.viaTuysse = true; }
+  if (!opts.chaine) {
+    // K'psul's : la première fois qu'il tuysse dans le tour, il ne s'engage pas
+    if (a(anc, "tuysse_ready") && anc.ancGardeTour !== g.tour) anc.ancGardeTour = g.tour;
+    else { anc.engage = true; anc.viaTuysse = true; }
+  }
   anc.tuysseCnt++;
   // « Ne s'engage pas » / « reste dégagé » : seulement la première fois par tour pour un même Gadz
   const garderJeune = (a(jeune, "tuyssed_ready") || a(anc, "keep_ready")) && jeune.gardeTour !== g.tour;
@@ -375,6 +379,15 @@ async function effet(g, p, c, choix, cible, cible2) {
       case "pins": cible.pinsBonus += 1; log(g, `Pin's Trad's : ${cible.def.name} donne 1 ressource de plus.`); break;
       case "sandwich": engager(g, p, cible, null, 2); break;
       case "jetplacks": for (const x of [].concat(cible).slice(0, 2)) { if (!protege(g, o, x)) { x.engage = true; log(g, `${x.def.name} est engagé (quillons !).`); } } break;
+      case "vacances": {
+        for (const j of g.joueurs) for (const x of j.zone.filter(y => y.def.type === "Gadz")) quitterZone(g, j, x);
+        log(g, `Vacances d'été : tous les Gadz retournent en main.`, "warn");
+        // La rentrée : celui qui l'a jouée repose aussitôt jusqu'à 3 Gadz
+        const dispo = p.main.filter(vrai_gadz).filter((x, i, l) => l.findIndex(y => y.def.id === x.def.id) === i);
+        const pris = await choix(g, p, { carte: c, type: "weeks", options: dispo, n: 3 }) || [];
+        for (const x of [].concat(pris).slice(0, 3)) { p.main.splice(p.main.indexOf(x), 1); arriver(g, p, x); }
+        break;
+      }
       case "hymne": p.tempo.hymne = true; log(g, `Hymne : ce tour-ci, chaque tuyssage rapporte +1.`); gagner(g, p, p.tempo.tuyssages, "cartes", "Hymne, tuyssages déjà faits"); break;
       case "draw_per_gadz": piocher(g, p, Math.min(3, p.zone.filter(x => x.def.type === "Gadz").length)); break;
       case "clocheton": { const l = p.zone.filter(x => vrai_gadz(x) && !x.engage); l.forEach(x => x.engage = true); gagner(g, p, l.length, "cartes", "Le Clocheton"); break; }
@@ -462,6 +475,7 @@ function estimer(g, p, c) {
     case "pins": return 1.6;
     case "sandwich": return .9;
     case "jetplacks": return 0; // gardé pour réagir
+    case "vacances": { const nO = o.zone.filter(x => x.def.type === "Gadz").length, nM = p.zone.filter(x => x.def.type === "Gadz").length; return o.points - p.points >= 3 && nO >= nM && nO >= 4 ? 3 + (nO - nM) : 0; }
     case "hymne": return p.tempo.tuyssages + meilleuresPaires(g, p).paires.length * .9;
     case "draw_per_gadz": return Math.min(3, nG) * .7;
     case "clocheton": { const libres = p.zone.filter(x => vrai_gadz(x) && !x.engage).length; return libres - meilleuresPaires(g, p).pts * .9; }
@@ -483,7 +497,7 @@ const choixIA = async (g, p, q) => {
       if (f === "cp") { const l = q.options.slice().sort((x, y) => x.def.prom - y.def.prom); return l[0]; }
       return q.options.slice().sort((x, y) => valeurRes(g, p, y) - valeurRes(g, p, x))[0];
     }
-    case "source": return q.options.find(x => fx(x).some(f => ["double_tuysse", "decade_bonus", "next_prom_bonus", "draw_on_tuysse", "res_lineage"].includes(f))) || q.options[0];
+    case "source": return q.options.find(x => fx(x).some(f => ["tuysse_ready", "decade_bonus", "next_prom_bonus", "draw_on_tuysse", "res_lineage"].includes(f))) || q.options[0];
     case "defausse": return q.options.slice().sort((x, y) => valeurGarder(g, p, x) - valeurGarder(g, p, y)).slice(0, q.n);
     case "weeks": return q.options.slice().sort((x, y) => x.def.prom - y.def.prom).slice(0, q.n);
     case "monome": { const l = q.options.slice().sort((x, y) => x.def.prom - y.def.prom); return l.length <= q.n ? l : l.slice(0, q.n); }
@@ -578,7 +592,7 @@ function scorePose(g, p, c) {
   if (p.zone.some(x => vrai_gadz(x) && Math.abs(x.def.prom - c.def.prom) === 1)) s += 3;
   if (c.def.conscrit) s += 4;
   if (fx(c).some(f => f.startsWith("arrive"))) s += 1.5;
-  if (a(c, "double_tuysse") || a(c, "decade_bonus")) s += 2;
+  if (a(c, "tuysse_ready") || a(c, "decade_bonus")) s += 2;
   // Diversité de prom's
   if (!p.zone.some(x => x.def.prom === c.def.prom)) s += 1;
   return s;

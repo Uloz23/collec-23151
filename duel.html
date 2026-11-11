@@ -38,8 +38,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .chips { display: flex; gap: 6px; font-family: var(--f-label); font-size: 13px; color: var(--muted); letter-spacing: .04em; flex-wrap: wrap; }
 .chip { padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
 .chip.on { color: var(--parch); border-color: var(--gold); }
-.bar { height: 4px; border-radius: 4px; background: rgba(255,255,255,.06); overflow: hidden; }
-.bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), #f7dc96); transition: width .4s; }
+.barre { height: 4px; border-radius: 4px; background: rgba(255,255,255,.06); overflow: hidden; }
+.barre i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), #f7dc96); transition: width .4s; }
 
 /* Plateau */
 .plateau { min-height: 0; overflow-y: auto; display: grid; padding-inline: 4px !important; grid-template-rows: minmax(min-content, 1fr) auto minmax(min-content, 1fr); gap: 6px; padding: 6px; border-radius: 14px; background: radial-gradient(ellipse at 50% 50%, var(--felt), var(--board) 75%); border: 1px solid var(--line); }
@@ -84,7 +84,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .c.choisi { box-shadow: 0 0 0 3px var(--gold), 0 0 18px rgba(217,180,95,.6); }
 .c.jouable { box-shadow: 0 0 0 2px rgba(217,180,95,.85), 0 4px 10px rgba(0,0,0,.45); }
 @keyframes pulse { 50% { box-shadow: 0 0 0 3px var(--good), 0 0 6px rgba(127,210,154,.3); } }
-@media (prefers-reduced-motion: reduce) { .c, .bar i { transition: none; } .c.cible { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .c, .barre i { transition: none; } .c.cible { animation: none; } }
 
 /* Ressources + main + actions */
 .res { display: flex; align-items: center; gap: 8px; font-family: var(--f-label); font-size: 14px; color: var(--muted); padding: 0 4px; min-height: 22px; flex-wrap: wrap; }
@@ -163,6 +163,27 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .c.mini.jv-doree { border: 2px solid #f6d77a; box-shadow: 0 0 0 1px #8a6420, 0 0 12px rgba(255,205,90,.75); }
 .c.mini.jv-textless { border: 2px solid #f1dfae; }
 .c.mini.jv-doree .nm { color: #fff1c2; }
+.chip.kj { background: none; color: inherit; cursor: pointer; font: inherit; }
+.chip.kj:hover { border-color: var(--gold); color: var(--parch); }
+/* Taille des cartes selon la place disponible (largeur et hauteur de l'écran) */
+:root { --jw: clamp(44px, min(6vw, 8.6vh), 104px); --mw: clamp(72px, min(9.5vw, 15vh), 150px); }
+.c.mini { width: var(--jw); height: calc(var(--jw) * 1.31); }
+.c.mini .nm { font-size: calc(var(--jw) * .235); } .c.mini .ft { font-size: calc(var(--jw) * .26); }
+.zone.serre .c.mini { width: calc(var(--jw) * .88); height: calc(var(--jw) * 1.17); }
+.cv, .main .cv { width: var(--mw); }
+.main { min-height: calc(var(--mw) * 1.4 + 18px); }
+@media (min-width: 700px) and (min-height: 600px) {
+  .app { max-width: 1280px; gap: 8px; }
+  .zone { gap: 10px 8px; }
+  .main { gap: 12px; }
+  .grille .cv { width: 130px; }
+  .fiche-haut .cv { width: 200px; }
+  .vitrine .cv { width: min(280px, 34vh); } .vitrine .effet { top: calc(50% + min(200px, 24vh)); font-size: 16px; width: min(420px, 86vw); }
+  .hud .nom { font-size: 24px; } .hud .pts b { font-size: 30px; }
+  .journal { font-size: 14px; }
+  .tabslot { width: 90px; } .tabslot .slot { width: 84px; height: 44px; font-size: 15px; }
+  .feuille { max-width: 900px; }
+}
 .compte { font-family: var(--f-label); font-size: 13px; color: var(--muted); letter-spacing: .04em; }
 </style>
 </head>
@@ -170,7 +191,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 <div class="app" id="app">
   <div class="hud" id="hud-ia"></div>
-  <div class="bar" aria-hidden="true"><i id="bar-ia" style="width:0"></i></div>
+  <div class="barre" aria-hidden="true"><i id="bar-ia" style="width:0"></i></div>
   <div class="plateau">
     <div class="zone adv" id="zone-ia" aria-label="Zone de manip' de l'IA"></div>
     <div class="milieu">
@@ -194,8 +215,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <script src="config.js?v=3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="carte.js?v=1"></script>
-<script src="jeu/cartes.js?v=1"></script>
-<script src="jeu/moteur.js?v=1"></script>
+<script src="jeu/cartes.js?v=2"></script>
+<script src="jeu/moteur.js?v=2"></script>
 <script>
 const M = window.Moteur;
 const $ = id => document.getElementById(id);
@@ -302,7 +323,7 @@ function carteJeu(c, opts = {}) {
 function hud(p, el) {
   const o = g.joueurs[1 - p.i];
   el.classList.toggle("actif", g.actif === p.i && !g.fini);
-  el.innerHTML = `<span class="nom">${esc(p.nom)}</span><span class="chips"><span class="chip">Main ${p.main.length}</span><span class="chip">Pioche ${p.pioche.length}</span><span class="chip">K'jib ${p.kjib.length}</span></span><span class="pts"><b>${p.points}</b><small>/ ${g.opts.cible}</small></span>`;
+  el.innerHTML = `<span class="nom">${esc(p.nom)}</span><span class="chips"><span class="chip">Main ${p.main.length}</span><span class="chip">Pioche ${p.pioche.length}</span><button class="chip kj" type="button" data-kjib="${p.i}">K'jib ${p.kjib.length}</button></span><span class="pts"><b>${p.points}</b><small>/ ${g.opts.cible}</small></span>`;
 }
 let ptsAff = [0, 0];
 function rendre() {
@@ -334,6 +355,16 @@ function rendre() {
   const lg = g.log.filter(l => l.cls !== "tour").slice(-2);
   $("journal").innerHTML = lg.map(l => `<div class="${l.cls || ""}">${esc(l.txt)}</div>`).join("");
 }
+
+// K'jib (défausse) des deux joueurs : on peut le consulter à tout moment
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-kjib]"); if (!b || !g) return;
+  const p = g.joueurs[+b.dataset.kjib];
+  const v = feuille(`<div class="sous">${p.kjib.length} carte${p.kjib.length > 1 ? "s" : ""}, la plus récente en premier</div><h2>K'jib de ${esc(p.nom)}</h2><div class="grille" id="kj-g">${p.kjib.length ? "" : `<p class="compte">Aucune carte pour l'instant.</p>`}</div><div class="row"><button class="btn" type="button" data-a="x">Fermer</button></div>`);
+  const gr = v.querySelector("#kj-g");
+  p.kjib.slice().reverse().forEach(c => { const el = carteEl(c, {}); el.onclick = () => feuille(`<h2>${esc(c.def.name)}</h2><p>${esc(c.def.text)}</p>`); gr.appendChild(el); });
+  v.querySelector('[data-a="x"]').onclick = () => fermer(v);
+});
 
 // ---------- Feuilles ----------
 function feuille(html, opts = {}) {
