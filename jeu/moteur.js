@@ -46,6 +46,8 @@ function nouvellePartie(opts) {
   if (comp.includes("point")) sec.points = 1;
   if (comp.includes("point2")) sec.points = 2;
   if (comp.includes("gadz")) sec.extraPose = true;
+  const bonus = [comp.includes("carte") && "1 carte de plus", comp.includes("point") && "1 point", comp.includes("point2") && "2 points", comp.includes("ressource") && "1 ressource au premier tour"].filter(Boolean);
+  if (bonus.length) log(g, `${sec.nom} joue en second et commence avec ${bonus.join(" et ")} pour compenser.`, "pts");
   debutTour(g);
   return g;
 }
