@@ -40,7 +40,7 @@ function nouvellePartie(opts) {
   g.actif = opts.premier != null ? opts.premier : (R() < .5 ? 0 : 1);
   g.premier = g.actif;
   // Compensation du second joueur
-  const sec = g.joueurs[1 - g.actif], comp = (g.opts.compensation || "carte+point").split("+");
+  const sec = g.joueurs[1 - g.actif], comp = (g.opts.compensation || "carte").split("+");
   if (comp.includes("carte")) piocher(g, sec, 1);
   if (comp.includes("ressource")) sec.prochain.res = 1;
   if (comp.includes("point")) sec.points = 1;

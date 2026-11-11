@@ -216,7 +216,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="carte.js?v=1"></script>
 <script src="jeu/cartes.js?v=4"></script>
-<script src="jeu/moteur.js?v=5"></script>
+<script src="jeu/moteur.js?v=6"></script>
 <script>
 const M = window.Moteur;
 const $ = id => document.getElementById(id);
@@ -549,7 +549,7 @@ $("b-journal").onclick = () => {
 };
 $("b-regles").onclick = () => {
   const v = feuille(`<h2>Règles du prototype</h2><div class="regles">
-  <h3>Gagner</h3><ul><li>Le premier à <b>${g.opts.cible} points de Trad's</b> gagne.</li><li>Le second joueur commence avec <b>6 cartes et 1 point</b>, pour compenser.</li></ul>
+  <h3>Gagner</h3><ul><li>Le premier à <b>${g.opts.cible} points de Trad's</b> gagne.</li><li>Le second joueur commence avec <b>6 cartes</b> au lieu de 5, pour compenser.</li></ul>
   <h3>Ton tour</h3><ul><li>Tes cartes se dégagent, puis tu pioches 1 carte (le premier joueur ne pioche pas à son premier tour).</li><li>Tu peux poser <b>1 Gadz gratuitement</b> par tour. Les Za et Zon se paient et ne comptent pas dans cette limite.</li><li>Chaque carte de ta zone peut être <b>engagée</b> une fois : soit pour donner de la <b>ressource</b>, soit pour <b>tuysser</b>.</li><li>La ressource paie les Trad's, Chants, Manip' et Tabagn's. Elle est perdue à la fin du tour.</li></ul>
   <h3>Tuysser</h3><ul><li>Touche un Gadz, puis « Tuysser… », puis un Gadz <b>plus jeune</b>. Les deux s'engagent.</li><li>Pas de limite par tour : un Gadz peut tuysser ou être tuyssé <b>tant qu'il est dégagé</b>. Les cartes qui dégagent permettent donc de tuysser à nouveau.</li><li>Les effets « ne s'engage pas » ou « reste dégagé » ne jouent que la première fois par tour.</li><li><b>1 point</b>, ou <b>2</b> si leurs prom's se suivent (l'ancien et son conscrit) ou s'il y a 10 prom's d'écart ou plus.</li><li>Le <b>.onscrit</b> rapporte 2 points (bonus compris), 3 fois maximum, puis donne 2 ressources.</li><li>Les Za et Zon ne tuyssent pas et ne sont pas tuyssés.</li><li>${reglages.arrivee === "A" ? "Un Gadz qui vient d'arriver peut donner de la ressource, mais ne tuysse qu'au tour suivant." : reglages.arrivee === "B" ? "Un Gadz qui vient d'arriver peut tout faire tout de suite." : "Un Gadz qui vient d'arriver ne fait rien avant le tour suivant."}</li></ul>
   <h3>Cartes</h3><ul><li><b>Trad's, Chants, Tabagn's</b> : seulement pendant ton tour.</li><li><b>Manip'</b> : à tout moment. Quand l'IA tuysse et que tu as une Manip' jouable, tu as 30 secondes pour réagir.</li><li><b>Tabagn's</b> : 1 seul en place, le nouveau remplace l'ancien.</li></ul>
