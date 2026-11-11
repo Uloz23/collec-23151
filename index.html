@@ -671,7 +671,7 @@ async function loadCards() {
 function mapCard(c) {
   return ({
     id: c.id, name: c.name, type: c.type, sub: c.sub || "", colors: { bg: /^#[0-9a-f]{6}$/i.test(c.color_bg || "") ? c.color_bg : null, fg: /^#[0-9a-f]{6}$/i.test(c.color_fg || "") ? c.color_fg : null }, kind: (c.kind || "").trim(), fams: c.fams || "", rarity: c.rarity,
-    art: c.art || "trad", hue: c.hue ?? 30, text: c.text || "",
+    art: c.art === "bordels" ? "bordels" : ({ "Gadz": "gadz", "Trad's": "trad", "Chant": "chant", "Manip'": "manip", "Tabagn's": "tabagn" }[c.type] || c.art || "trad"), hue: c.hue ?? 30, text: c.text || "",
     photo: (c.photo_normale || c.photo_textless) ? { normale: media(c.photo_normale || c.photo_textless), textless: media(c.photo_textless || c.photo_normale) } : null,
     audio: (c.audio_normale || c.audio_textless || c.audio_doree) ? { normale: media(c.audio_normale || c.audio_textless), textless: media(c.audio_textless), doree: media(c.audio_doree) } : null
   });

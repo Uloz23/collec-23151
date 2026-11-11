@@ -626,7 +626,7 @@ let NUMS = {}, NTOTAL = 0, previewT = null, cropShot = null;
 function sendPreview() {
   const fr = $("e-preview"); if (!current || !fr || !fr.contentWindow) return;
   const card = { ...current, id: +$("e-id").value || current.id, name: $("e-name").value.trim() || "Sans nom", type: $("e-type").value, rarity: $("e-rarity").value,
-    sub: $("e-sub").value.trim(), kind: $("e-kind").value.trim(), color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), fams: $("e-fams").value.trim(), text: $("e-text").value.trim(), art: current.art || ART[$("e-type").value] || "trad", hue: current.hue ?? 30 };
+    sub: $("e-sub").value.trim(), kind: $("e-kind").value.trim(), color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), fams: $("e-fams").value.trim(), text: $("e-text").value.trim(), art: current.art === "bordels" ? "bordels" : (ART[$("e-type").value] || "trad"), hue: current.hue ?? 30 };
   if (cropShot) { if (cropShot.variant === "normale") card.photo_normale = cropShot.url; else card.photo_textless = cropShot.url; }
   fr.contentWindow.postMessage({ type: "apercu", card, num: NUMS[current.id] || card.id, total: Math.max(NTOTAL, 1) }, location.origin);
 }
@@ -651,7 +651,9 @@ $("e-save").onclick = async () => {
     sub: $("e-sub").value.trim() || null, color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), kind: $("e-type").value === "Gadz" ? ($("e-kind").value.trim() || null) : null, fams: $("e-fams").value.trim() || null, text: $("e-text").value.trim(), published: $("e-pub").checked, updated_at: new Date().toISOString() };
   if (!row.name) return say($("e-status"), "Donne un nom à la carte.", false);
   if (row.type === "Gadz" && !row.sub) return say($("e-status"), "Un Gadz a besoin de sa promo (Bo211…).", false);
-  if (current._new) { row.art = ART[row.type] || "trad"; row.hue = Math.floor(Math.random() * 360); }
+  // L'illustration suit le type de la carte (sauf les illustrations spéciales comme Bordel's)
+  row.art = current.art === "bordels" ? "bordels" : (ART[row.type] || "trad");
+  if (current._new) row.hue = Math.floor(Math.random() * 360);
   const q = current._new ? SB.from("cards").insert(row).select().single() : SB.from("cards").update(row).eq("id", row.id).select().single();
   const { data, error } = await q;
   if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message.includes("color_") ? "il manque la mise à jour n° 5 dans Supabase." : error.message.includes("kind") ? "il manque la mise à jour n° 4 dans Supabase." : error.message), false);
