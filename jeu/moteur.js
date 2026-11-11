@@ -113,10 +113,20 @@ function valeurRes(g, p, c) {
   if (p.tempo && p.tempo.gorgu && g.actif === p.i) n++;
   return n;
 }
+// Qui décide : l'interface pour un joueur humain (g.choixPar[i]), sinon l'IA
+const choisir = (g, p, q) => (g.choixPar && g.choixPar[p.i]) ? g.choixPar[p.i](g, p, q) : choixIA(g, p, q);
+const humain = (g, p) => !!(g.choixPar && g.choixPar[p.i]);
+// Dégager jusqu'à n cartes engagées de sa zone (le joueur choisit lesquelles)
+async function degager(g, p, sauf, n, qui) {
+  const cands = p.zone.filter(x => x !== sauf && x.engage && !(a(x, "res_untap") && x.untapUsed));
+  if (!cands.length) return;
+  const pris = [].concat(await choisir(g, p, { carte: { def: { name: qui } }, type: "degager", options: cands, n: Math.min(n, cands.length) }) || []).slice(0, n);
+  for (const t of pris) { t.engage = false; log(g, `${qui} : ${t.def.name} est dégagé.`); }
+}
 function bloqueC(g, c) { return g.opts.arrivee === "C" && c.arrive === g.tour && !c.haste; }
 function peutEngager(g, c) { return !c.engage && !bloqueC(g, c); }
 // type : null = ressource normale, sinon ressource réservée (Chant, Trad's…)
-function engager(g, p, c, type = null, bonus = 0) {
+async function engager(g, p, c, type = null, bonus = 0) {
   if (c.engage || bloqueC(g, c)) return false;
   c.engage = true;
   if (g.actif === p.i && p.tempo) p.tempo.engagesRes = (p.tempo.engagesRes || 0) + 1;
@@ -126,8 +136,7 @@ function engager(g, p, c, type = null, bonus = 0) {
   else { p.pool.any += n; log(g, `${p.nom} engage ${c.def.name} : +${n} ressource${n > 1 ? "s" : ""}.`); }
   if (a(c, "res_untap") && !c.untapUsed) {
     c.untapUsed = true;
-    const t = choisirADegager(g, p, c);
-    if (t) { t.engage = false; log(g, `${c.def.name} dégage ${t.def.name}.`); }
+    await degager(g, p, c, 1, c.def.name);
   }
   return true;
 }
@@ -149,21 +158,26 @@ function cout(g, p, c) {
     k -= red;
   }
   if (c.def.name === "GGT" && p.tempo && p.tempo.zamat) k -= 1;
-  if (c.def.cost === 0) return 0;
   if (g.opts.reduction && c.def.type !== "Tabagn's" && c.def.cost >= 2) k -= g.opts.reduction;
   if (c.def.fx[0] === "gala") return Math.max(0, k - (p.tempo ? p.zone.filter(x => p.tempo.tuysses && p.tempo.tuysses.has(x.uid)).length : 0));
-  return Math.max(1, k);
+  return Math.max(0, k);
 }
 // Potentiel : ressources dispo + ce que les cartes dégagées pourraient donner
 function potentiel(g, p, type) { return totalPool(p, type) + p.zone.filter(c => !c.engage && !bloqueC(g, c)).reduce((s, c) => s + (type && fx(c).some(f => f === "res2:" + type) ? Math.max(2, valeurRes(g, p, c)) : valeurRes(g, p, c)), 0); }
-function payer(g, p, montant, type, reserves = new Set()) {
+async function payer(g, p, montant, type, reserves = new Set()) {
+  if (humain(g, p) && totalPool(p, type) < montant) {
+    const dispo = p.zone.filter(c => !c.engage && !bloqueC(g, c));
+    const pris = await choisir(g, p, { carte: { def: { name: "Paiement" } }, type: "payer", options: dispo, besoin: montant - totalPool(p, type), resType: type, n: dispo.length });
+    if (!pris) return false;
+    for (const c of pris) await engager(g, p, c, type && fx(c).includes("res2:" + type) ? type : null);
+  }
   // On engage automatiquement ce qu'il faut, en gardant les Gadz réservés (pour tuysser)
   const ordre = () => p.zone.filter(c => !c.engage && !bloqueC(g, c) && !reserves.has(c.uid)).sort((x, y) => scoreGarder(g, p, x) - scoreGarder(g, p, y));
   let guard = 0;
   while (totalPool(p, type) < montant && guard++ < 20) {
     const l = ordre(); if (!l.length) break;
     const res2 = l.find(c => type && fx(c).includes("res2:" + type));
-    engager(g, p, res2 || l[0], res2 ? type : null);
+    await engager(g, p, res2 || l[0], res2 ? type : null);
   }
   if (totalPool(p, type) < montant) return false;
   let reste = montant;
@@ -185,7 +199,7 @@ function peutPoserGadz(g, p, c) {
   if (c.def.proche) return true;
   return !p.gadzPose;
 }
-function arriver(g, p, c, opts = {}) {
+async function arriver(g, p, c, opts = {}) {
   c.engage = false; c.arrive = g.tour; c.recus = c.recus || 0; c.tuysseCnt = 0; c.tuysseMax = a(c, "tuysse_ready") ? 2 : 1;
   c.haste = !!opts.haste || (p.tab && a(p.tab, "tab_p3")) || (!c.def.proche && p.zone.some(x => a(x, "haste_first")) && !p.tempo.premierPose);
   if (!c.def.proche) p.tempo.premierPose = true;
@@ -195,17 +209,15 @@ function arriver(g, p, c, opts = {}) {
   if (a(c, "arrive_draw_lineage") && lignee(p, c)) { piocher(g, p, 1); log(g, `${c.def.name} : pioche 1 (lignée).`); }
   if (a(c, "arrive_res")) { p.pool.any += 1; log(g, `${c.def.name} : +1 ressource.`); }
   if (a(c, "arrive_young_res")) { const n = p.zone.filter(x => vrai_gadz(x) && x.def.prom > c.def.prom).length; p.pool.any += n; log(g, `${c.def.name} : +${n} ressource${n > 1 ? "s" : ""}.`); }
-  if (a(c, "arrive_untap")) { const t = choisirADegager(g, p, c); if (t) { t.engage = false; log(g, `${c.def.name} dégage ${t.def.name}.`); } }
-  if (a(c, "arrive_look3")) regarder3(g, p, c.def.name);
+  if (a(c, "arrive_untap")) await degager(g, p, c, 1, c.def.name);
+  if (a(c, "arrive_look3")) await regarder3(g, p, c.def.name, "dessous");
 }
-function regarder3(g, p, qui) {
+// Regarder les 3 cartes du dessus et en prendre 1 ; les autres vont dessous (Äk'o, Cir'c') ou restent dessus (Zamat)
+async function regarder3(g, p, qui, reste = "dessous") {
   const top = p.pioche.slice(0, 3); if (!top.length) return;
-  // On garde la carte la plus utile (Gadz si on en manque, sinon la plus chère jouable)
-  const besoinGadz = p.zone.filter(vrai_gadz).length + p.main.filter(vrai_gadz).length < 4;
-  top.sort((x, y) => valeurCarte(g, p, y, besoinGadz) - valeurCarte(g, p, x, besoinGadz));
-  const garde = top[0];
+  const garde = await choisir(g, p, { carte: { def: { name: qui } }, type: "regarder", options: top, n: 1, reste }) || top[0];
   p.pioche.splice(p.pioche.indexOf(garde), 1); p.main.push(garde);
-  for (const r of top.slice(1)) { p.pioche.splice(p.pioche.indexOf(r), 1); p.pioche.push(r); }
+  if (reste === "dessous") for (const r of top.filter(x => x !== garde)) { p.pioche.splice(p.pioche.indexOf(r), 1); p.pioche.push(r); }
   log(g, `${qui} : ${p.nom} regarde 3 cartes et en garde 1.`);
 }
 function valeurCarte(g, p, c, besoinGadz) { if (vrai_gadz(c)) return besoinGadz ? 10 : 3; return 2 + Math.min(c.def.cost, 5) * .5; }
@@ -254,9 +266,9 @@ async function tuysser(g, p, anc, jeune, opts = {}) {
   }
   const pts = pointsTuysse(g, p, anc, jeune);
   if (!opts.chaine) {
-    // K'psul's : la première fois qu'il tuysse dans le tour, il ne s'engage pas
-    if (a(anc, "tuysse_ready") && anc.ancGardeTour !== g.tour) anc.ancGardeTour = g.tour;
-    else { anc.engage = true; anc.viaTuysse = true; }
+    // Un Gadz qui peut tuysser plusieurs fois (K'psul's, GGT) ne s'engage qu'une fois qu'il a fini
+    anc.viaTuysse = true;
+    if (anc.tuysseCnt + 1 >= anc.tuysseMax) anc.engage = true;
   }
   anc.tuysseCnt++;
   // « Ne s'engage pas » / « reste dégagé » : seulement la première fois par tour pour un même Gadz
@@ -329,11 +341,11 @@ async function jouer(g, p, c, choix, opts = {}) {
   }
   const reserves = new Set(opts.reserves || []);
   if (cible && !Array.isArray(cible) && c.def.fx[0] === "sandwich") reserves.add(cible.uid);
-  if (k > 0 && !payer(g, p, k, c.def.type === "Gadz" ? null : c.def.type, reserves)) return false;
+  if (k > 0 && !(await payer(g, p, k, c.def.type === "Gadz" ? null : c.def.type, reserves))) return false;
   p.main.splice(p.main.indexOf(c), 1);
   for (const x of defs) { p.main.splice(p.main.indexOf(x), 1); p.kjib.push(x); log(g, `${p.nom} défausse ${x.def.name}.`); }
   p.stats.joues[c.def.name] = (p.stats.joues[c.def.name] || 0) + 1;
-  if (c.def.type === "Gadz") { if (!c.def.proche) { if (p.extraPose) p.extraPose = false; else p.gadzPose = true; } arriver(g, p, c); if (g.onEvent) await g.onEvent("pose", { p, c }); return true; }
+  if (c.def.type === "Gadz") { if (!c.def.proche) { if (p.extraPose) p.extraPose = false; else p.gadzPose = true; } await arriver(g, p, c); if (g.onEvent) await g.onEvent("pose", { p, c }); return true; }
   log(g, `${p.nom} joue ${c.def.name}${k ? " (" + k + ")" : ""}.`, "carte");
   if (g.onEvent) await g.onEvent("joue", { p, c, k });
   if (c.def.type === "Tabagn's") { if (p.tab) p.kjib.push(p.tab); p.tab = c; return true; }
@@ -347,12 +359,12 @@ async function effet(g, p, c, choix, cible, cible2) {
     const [code, arg] = f.split(":");
     switch (code) {
       case "draw": piocher(g, p, +arg); break;
-      case "untap": { for (let i = 0; i < +arg; i++) { const t = choisirADegager(g, p, null); if (t) { t.engage = false; log(g, `${t.def.name} est dégagé.`); } } break; }
-      case "zamat": regarder3(g, p, "Zamat"); p.tempo.zamat = true; break;
+      case "untap": await degager(g, p, null, +arg, c.def.name); break;
+      case "zamat": await regarder3(g, p, "Zamat", "dessus"); p.tempo.zamat = true; break;
       case "weeks_fams": {
         const dispo = [...p.main.filter(vrai_gadz), ...p.kjib.filter(vrai_gadz)].filter((x, i, l) => !p.zone.some(z => z.def.id === x.def.id) && l.findIndex(y => y.def.id === x.def.id) === i);
         const pris = await choix(g, p, { carte: c, type: "weeks", options: dispo, n: 2 }) || [];
-        for (const x of [].concat(pris).slice(0, 2)) { const src = p.main.includes(x) ? p.main : p.kjib; src.splice(src.indexOf(x), 1); arriver(g, p, x, { haste: true }); }
+        for (const x of [].concat(pris).slice(0, 2)) { const src = p.main.includes(x) ? p.main : p.kjib; src.splice(src.indexOf(x), 1); await arriver(g, p, x, { haste: true }); }
         break;
       }
       case "craps": cible.crap = g.tour + 1 + (cible.owner === g.actif ? 0 : 0); cible.crap = g.tour + 1; log(g, `${cible.def.name} est Crap's jusqu'à la fin du prochain tour de ${o.nom}.`); break;
@@ -377,7 +389,7 @@ async function effet(g, p, c, choix, cible, cible2) {
       case "cp": { const src = fx(cible2).filter(f => f !== "conscrit"); cible.extraFx.push(...src); log(g, `CP : ${cible.def.name} gagne l'effet de ${cible2.def.name}.`); break; }
       case "pts_per_gadz": gagner(g, p, Math.min(6, p.zone.filter(x => x.def.type === "Gadz").length), "cartes", "La 23-151"); break;
       case "pins": cible.pinsBonus += 1; log(g, `Pin's Trad's : ${cible.def.name} donne 1 ressource de plus.`); break;
-      case "sandwich": engager(g, p, cible, null, 2); break;
+      case "sandwich": await engager(g, p, cible, null, 2); break;
       case "jetplacks": for (const x of [].concat(cible).slice(0, 2)) { if (!protege(g, o, x)) { x.engage = true; log(g, `${x.def.name} est engagé (quillons !).`); } } break;
       case "vacances": {
         for (const j of g.joueurs) for (const x of j.zone.filter(y => y.def.type === "Gadz")) quitterZone(g, j, x);
@@ -385,7 +397,7 @@ async function effet(g, p, c, choix, cible, cible2) {
         // La rentrée : celui qui l'a jouée repose aussitôt jusqu'à 3 Gadz
         const dispo = p.main.filter(vrai_gadz).filter((x, i, l) => l.findIndex(y => y.def.id === x.def.id) === i);
         const pris = await choix(g, p, { carte: c, type: "weeks", options: dispo, n: 3 }) || [];
-        for (const x of [].concat(pris).slice(0, 3)) { p.main.splice(p.main.indexOf(x), 1); arriver(g, p, x); }
+        for (const x of [].concat(pris).slice(0, 3)) { p.main.splice(p.main.indexOf(x), 1); await arriver(g, p, x); }
         break;
       }
       case "hymne": p.tempo.hymne = true; log(g, `Hymne : ce tour-ci, chaque tuyssage rapporte +1.`); gagner(g, p, p.tempo.tuyssages, "cartes", "Hymne, tuyssages déjà faits"); break;
@@ -499,6 +511,8 @@ const choixIA = async (g, p, q) => {
     }
     case "source": return q.options.find(x => fx(x).some(f => ["tuysse_ready", "decade_bonus", "next_prom_bonus", "draw_on_tuysse", "res_lineage"].includes(f))) || q.options[0];
     case "defausse": return q.options.slice().sort((x, y) => valeurGarder(g, p, x) - valeurGarder(g, p, y)).slice(0, q.n);
+    case "degager": { const l = q.options.slice().sort((x, y) => (vrai_gadz(y) - vrai_gadz(x)) || (valeurRes(g, p, y) - valeurRes(g, p, x))); return l.slice(0, q.n); }
+    case "regarder": { const besoinGadz = p.zone.filter(vrai_gadz).length + p.main.filter(vrai_gadz).length < 4; return q.options.slice().sort((x, y) => valeurCarte(g, p, y, besoinGadz) - valeurCarte(g, p, x, besoinGadz))[0]; }
     case "weeks": return q.options.slice().sort((x, y) => x.def.prom - y.def.prom).slice(0, q.n);
     case "monome": { const l = q.options.slice().sort((x, y) => x.def.prom - y.def.prom); return l.length <= q.n ? l : l.slice(0, q.n); }
   }
@@ -514,7 +528,7 @@ function valeurGarder(g, p, c) {
 function scoreMenace(g, o, c) { return (vrai_gadz(c) ? 3 : 0) + (c.def.conscrit ? 3 : 0) + fx(c).length + (o.zone.some(x => x !== c && vrai_gadz(x) && Math.abs(x.def.prom - c.def.prom) === 1) ? 1 : 0); }
 
 // Réaction de l'IA : Jetplack's sur un gros tuyssage
-function reactionIA(g, p, ev) {
+async function reactionIA(g, p, ev) {
   if (ev.type !== "tuysse") return false;
   const c = p.main.find(x => x.def.fx[0] === "jetplacks");
   if (!c) return false;
@@ -524,7 +538,7 @@ function reactionIA(g, p, ev) {
   const cibl = [ev.anc, ev.jeune].filter(x => !x.engage && !protege(g, o, x));
   if (!cibl.length) return false;
   if (potentiel(g, p, "Manip'") < cout(g, p, c)) return false;
-  payer(g, p, cout(g, p, c), "Manip'");
+  await payer(g, p, cout(g, p, c), "Manip'");
   p.main.splice(p.main.indexOf(c), 1); p.kjib.push(c);
   p.stats.joues[c.def.name] = (p.stats.joues[c.def.name] || 0) + 1;
   log(g, `${p.nom} réagit : ${c.def.name} !`, "carte");
@@ -598,6 +612,6 @@ function scorePose(g, p, c) {
   return s;
 }
 
-const api = { fx, a, lignee, bloqueC, cibles, nouvellePartie, deckAleatoire, finTour, jouer, jouable, tuysser, peutTuysser, engager, peutEngager, valeurRes, cout, pointsTuysse, tourIA, choixIA, reactionIA, meilleuresPaires, protege, nouveau, peutParticiper, potentiel, totalPool, vrai_gadz, rngFrom, CARTES, PAR_ID };
+const api = { degager, fx, a, lignee, bloqueC, cibles, nouvellePartie, deckAleatoire, finTour, jouer, jouable, tuysser, peutTuysser, engager, peutEngager, valeurRes, cout, pointsTuysse, tourIA, choixIA, reactionIA, meilleuresPaires, protege, nouveau, peutParticiper, potentiel, totalPool, vrai_gadz, rngFrom, CARTES, PAR_ID };
 if (typeof module !== "undefined") module.exports = api; else root.Moteur = api;
 })(this);

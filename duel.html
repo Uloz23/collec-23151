@@ -215,8 +215,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <script src="config.js?v=3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="carte.js?v=1"></script>
-<script src="jeu/cartes.js?v=2"></script>
-<script src="jeu/moteur.js?v=2"></script>
+<script src="jeu/cartes.js?v=3"></script>
+<script src="jeu/moteur.js?v=3"></script>
 <script>
 const M = window.Moteur;
 const $ = id => document.getElementById(id);
@@ -404,8 +404,8 @@ function fiche(c, p, ou) {
   v.querySelectorAll("[data-a]").forEach(b => b.onclick = async () => {
     const act = b.dataset.a; fermer(v);
     if (act === "jouer") { occupe = true; rendre(); await M.jouer(g, p, c, choixHumain); occupe = false; apres(); }
-    if (act === "res") { M.engager(g, p, c); apres(); }
-    if (act === "res2") { M.engager(g, p, c, M.fx(c).find(f => f.startsWith("res2:")).split(":")[1]); apres(); }
+    if (act === "res") { occupe = true; await M.engager(g, p, c); occupe = false; apres(); }
+    if (act === "res2") { occupe = true; await M.engager(g, p, c, M.fx(c).find(f => f.startsWith("res2:")).split(":")[1]); occupe = false; apres(); }
     if (act === "tuy") { mode = { type: "tuysse", anc: c }; rendre(); }
   });
 }
@@ -429,14 +429,34 @@ function apres() { rendre(); if (g.fini) finPartie(); }
 
 // Choix demandés par les effets (cibles, monôme, Week's Fam's…)
 function choixHumain(g, p, q) {
+  if (q.type === "payer") return choixPaiement(g, p, q);
   return new Promise(res => {
-    const titres = { defausse: "Quelle carte défausser ?", cible: "Choisis la cible", source: "Quel effet copier ?", weeks: "Quels Gadz reviennent ? (2 max)", monome: `Qui forme le monôme ? (${q.n > 20 ? "tous" : q.n + " max"})` };
+    const titres = { defausse: "Quelle carte défausser ?", cible: "Choisis la cible", source: "Quel effet copier ?", weeks: `Quels Gadz poser ? (${q.n} max)`, degager: q.n > 1 ? `Quels Gadz dégager ? (${q.n} max)` : "Quel Gadz dégager ?", regarder: q.reste === "dessus" ? "Quelle carte piocher ? (les autres restent sur ta pioche)" : "Quelle carte garder ? (les autres vont sous ta pioche)", monome: `Qui forme le monôme ? (${q.n > 20 ? "tous" : q.n + " max"})` };
     if (q.type === "monome" && q.n > 20) return res(q.options);
     const multi = q.n > 1;
     const v = feuille(`<div class="sous">${esc(q.carte.def.name)}</div><h2>${titres[q.type] || "Choisis"}</h2><div class="grille" id="ch-g"></div><div class="row"><button class="btn go" data-a="ok" type="button" ${multi ? "" : "hidden"}>Valider</button><button class="btn" data-a="non" type="button">Annuler</button></div>`, { bloquant: true });
     const sel = new Set(), gr = v.querySelector("#ch-g");
-    q.options.forEach(c => { const el = carteEl(c, { zone: true, court: true, mini: true }); el.classList.add("mini"); el.onclick = () => { if (!multi) { fermer(v); res(c); return; } if (sel.has(c)) sel.delete(c); else if (sel.size < q.n) sel.add(c); el.classList.toggle("choisi", sel.has(c)); }; gr.appendChild(el); });
+    const pleine = q.type === "regarder" || q.type === "defausse" || q.type === "weeks";
+    q.options.forEach(c => { const el = pleine ? carteEl(c, {}) : carteEl(c, { zone: true, court: true, mini: true }); if (!pleine) el.classList.add("mini"); el.onclick = () => { if (!multi) { fermer(v); res(c); return; } if (sel.has(c)) sel.delete(c); else if (sel.size < q.n) sel.add(c); el.classList.toggle("choisi", sel.has(c)); }; gr.appendChild(el); });
     v.querySelector('[data-a="ok"]').onclick = () => { fermer(v); res([...sel]); };
+    v.querySelector('[data-a="non"]').onclick = () => { fermer(v); res(null); };
+  });
+}
+
+// Paiement : tu choisis quelles cartes engager (le jeu propose déjà une sélection)
+function choixPaiement(g, p, q) {
+  return new Promise(res => {
+    const val = c => q.resType && M.fx(c).includes("res2:" + q.resType) ? Math.max(2, M.valeurRes(g, p, c)) : M.valeurRes(g, p, c);
+    // Suggestion : d'abord ce qui ne peut pas tuysser (proches, nouveaux), puis le moins utile
+    const sugg = q.options.slice().sort((x, y) => (M.peutParticiper(g, p, y) - M.peutParticiper(g, p, x)) || val(y) - val(x)).reverse();
+    const sel = new Set(); let tot = 0; for (const c of sugg) { if (tot >= q.besoin) break; sel.add(c); tot += val(c); }
+    const v = feuille(`<div class="sous">Paiement</div><h2>Engager pour ${q.besoin} ressource${q.besoin > 1 ? "s" : ""}</h2><p class="compte" id="pay-t"></p><div class="grille" id="ch-g"></div><div class="row"><button class="btn go" data-a="ok" type="button">Payer</button><button class="btn" data-a="non" type="button">Annuler</button></div>`, { bloquant: true });
+    const gr = v.querySelector("#ch-g"), ok = v.querySelector('[data-a="ok"]');
+    const maj = () => { const t = [...sel].reduce((s, c) => s + val(c), 0); v.querySelector("#pay-t").textContent = `Sélection : ${t} / ${q.besoin}. Touche les cartes à engager.`; ok.disabled = t < q.besoin; };
+    q.options.forEach(c => { const el = carteEl(c, { zone: true, court: true, mini: true }); el.classList.add("mini"); el.insertAdjacentHTML("beforeend", `<span class="tag">+${val(c)}</span>`); el.classList.toggle("choisi", sel.has(c));
+      el.onclick = () => { sel.has(c) ? sel.delete(c) : sel.add(c); el.classList.toggle("choisi", sel.has(c)); maj(); }; gr.appendChild(el); });
+    maj();
+    ok.onclick = () => { fermer(v); res([...sel]); };
     v.querySelector('[data-a="non"]').onclick = () => { fermer(v); res(null); };
   });
 }
@@ -510,7 +530,7 @@ $("b-fin").onclick = async () => { if (g.actif !== 0 || g.fini) return; mode = n
 function nouvelle() {
   const mon = reglages.mesCartes && PSEUDO ? deckCollection() : null;
   g = M.nouvellePartie({ noms: [PSEUDO || "Toi", "IA"], arrivee: reglages.arrivee, cible: reglages.cible, decks: mon ? [mon] : [] });
-  g.onEvent = animer; ptsAff = [0, 0];
+  g.onEvent = animer; ptsAff = [0, 0]; g.choixPar = [choixHumain, null];
   g.reaction = (gg, p, ev) => p.i === 0 ? reactionHumain(gg, p, ev) : M.reactionIA(gg, p, ev);
   $("voiles").innerHTML = ""; mode = null; occupe = false;
   rendre();
@@ -534,7 +554,7 @@ $("b-regles").onclick = () => {
   <h3>Tuysser</h3><ul><li>Touche un Gadz, puis « Tuysser… », puis un Gadz <b>plus jeune</b>. Les deux s'engagent.</li><li>Pas de limite par tour : un Gadz peut tuysser ou être tuyssé <b>tant qu'il est dégagé</b>. Les cartes qui dégagent permettent donc de tuysser à nouveau.</li><li>Les effets « ne s'engage pas » ou « reste dégagé » ne jouent que la première fois par tour.</li><li><b>1 point</b>, ou <b>2</b> si leurs prom's se suivent (l'ancien et son conscrit) ou s'il y a 10 prom's d'écart ou plus.</li><li>Le <b>.onscrit</b> rapporte 2 points (bonus compris), 3 fois maximum, puis donne 2 ressources.</li><li>Les Za et Zon ne tuyssent pas et ne sont pas tuyssés.</li><li>${reglages.arrivee === "A" ? "Un Gadz qui vient d'arriver peut donner de la ressource, mais ne tuysse qu'au tour suivant." : reglages.arrivee === "B" ? "Un Gadz qui vient d'arriver peut tout faire tout de suite." : "Un Gadz qui vient d'arriver ne fait rien avant le tour suivant."}</li></ul>
   <h3>Cartes</h3><ul><li><b>Trad's, Chants, Tabagn's</b> : seulement pendant ton tour.</li><li><b>Manip'</b> : à tout moment. Quand l'IA tuysse et que tu as une Manip' jouable, tu as 30 secondes pour réagir.</li><li><b>Tabagn's</b> : 1 seul en place, le nouveau remplace l'ancien.</li></ul>
   <h3>Pioche vide</h3><ul><li>On remélange le K'jib pour refaire une pioche, et l'adversaire marque <b>5 points</b>.</li></ul>
-  <p class="sous" style="text-transform:none;letter-spacing:0">Pour payer, le jeu engage automatiquement les cartes qu'il faut si tu n'as pas assez de ressources : engage-les toi-même avant pour choisir lesquelles.</p></div><div class="row"><button class="btn" type="button" data-a="reg">Réglages et nouvelle partie</button><button class="btn" type="button" data-a="x">Fermer</button></div>`);
+  <p class="sous" style="text-transform:none;letter-spacing:0">Pour payer, si tes ressources ne suffisent pas, le jeu te propose les cartes à engager : tu peux changer la sélection.</p></div><div class="row"><button class="btn" type="button" data-a="reg">Réglages et nouvelle partie</button><button class="btn" type="button" data-a="x">Fermer</button></div>`);
   v.querySelector('[data-a="x"]').onclick = () => fermer(v);
   v.querySelector('[data-a="reg"]').onclick = () => { fermer(v); ecranReglages(); };
 };
