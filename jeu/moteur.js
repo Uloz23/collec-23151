@@ -89,7 +89,7 @@ function debutTour(g) {
   for (const c of p.zone) { c.engage = false; c.tuysseCnt = 0; c.tuysseMax = a(c, "tuysse_ready") ? 2 : 1; c.tuysseDuTour = false; c.untapUsed = false; c.viaTuysse = false; if (c.biaude < g.tour) c.biaude = -1; }
   if (p.zagJusqua != null && p.zagJusqua < g.tour) p.zagJusqua = null;
   if (p.prochain.res) { p.pool.any += p.prochain.res; log(g, `${p.nom} récupère ${p.prochain.res} ressources (Gnassage).`); p.prochain.res = 0; }
-  if (p.tab && a(p.tab, "tab_bordels") && p.zone.length >= 4) gagner(g, p, 1, "cartes", "Bordel's");
+  if (p.tab && a(p.tab, "tab_bordels")) gagner(g, p, p.zone.filter(x => x.def.type === "Gadz").length >= 5 ? 2 : 1, "cartes", "Bordel's");
   if (p.tab && a(p.tab, "tab_birse") && p.zone.filter(c => c.def.type === "Gadz").length < o.zone.filter(c => c.def.type === "Gadz").length) { piocher(g, p, 1); log(g, `${p.nom} pioche 1 carte (Birse).`); }
   const premierTour = g.tour === 1;
   if (!premierTour) piocher(g, p, 1);
@@ -226,7 +226,7 @@ function valeurCarte(g, p, c, besoinGadz) { if (vrai_gadz(c)) return besoinGadz 
 
 function quitterZone(g, p, c) {
   p.zone.splice(p.zone.indexOf(c), 1);
-  c.engage = false; c.extraFx = []; c.pinsBonus = 0;
+  c.engage = false; c.extraFx = []; c.cpDe = []; c.pinsBonus = 0;
   p.main.push(c);
   log(g, `${c.def.name} retourne dans la main de ${p.nom}.`);
   if (a(c, "leave_draw2")) { piocher(g, p, 2); log(g, `${c.def.name} : pioche 2.`); }
@@ -321,12 +321,16 @@ function jouable(g, p, c, enReaction = false) {
   if (c.def.type !== "Manip'" && (!monTour || enReaction)) return false;
   const t = cibles(g, p, c); if (t && !t.length) return false;
   if (c.def.defausse && p.main.filter(x => x !== c).length < c.def.defausse) return false;
+  if (c.def.costX) return potentiel(g, p, c.def.type) >= 1 && p.zone.some(x => x.def.type === "Gadz");
   const k = cout(g, p, c);
   return potentiel(g, p, c.def.type) >= k;
 }
+// Coût X : au plus ce qu'on peut payer, et au plus le nombre de Gadz en zone (La 23-151)
+const maxX = (g, p, c) => Math.min(potentiel(g, p, c.def.type), p.zone.filter(x => x.def.type === "Gadz").length);
 async function jouer(g, p, c, choix, opts = {}) {
   if (!jouable(g, p, c, opts.reaction)) return false;
-  const k = c.def.type === "Gadz" ? c.def.cost : cout(g, p, c);
+  let k = c.def.type === "Gadz" ? c.def.cost : cout(g, p, c);
+  if (c.def.costX) { const x = await choix(g, p, { carte: c, type: "x", max: maxX(g, p, c), n: 1 }); if (!x) return false; k = c._x = x; }
   // Cible choisie AVANT de payer (sinon on risque de s'engager soi-même la cible)
   let cible = null, cible2 = null;
   const t = cibles(g, p, c);
@@ -388,7 +392,8 @@ async function effet(g, p, c, choix, cible, cible2) {
       case "gnassage": p.prochain.res = (p.prochain.res || 0) + 3; break;
       case "ggt": cible.tuysseMax += 1; cible.ggtBonus = g.tour; if (cible.engage && cible.viaTuysse) { /* peut encore tuysser */ } log(g, `GGT : ${cible.def.name} peut tuysser une fois de plus ce tour.`); break;
       case "weeks_p3": for (const j of g.joueurs) { const n = j.main.length; j.pioche.push(...j.main.splice(0)); melanger(g, j.pioche); piocher(g, j, n + (j === p ? 1 : 0)); } log(g, `Week's P3 : tout le monde repioche !`); gagner(g, p, 1, "cartes", "Week's P3"); break;
-      case "cp": { const src = fx(cible2).filter(f => f !== "conscrit"); cible.extraFx.push(...src); log(g, `CP : ${cible.def.name} gagne l'effet de ${cible2.def.name}.`); break; }
+      case "cp": { const src = fx(cible2).filter(f => f !== "conscrit"); cible.extraFx.push(...src); cible.cpDe = (cible.cpDe || []).concat(cible2.def.id); log(g, `CP : ${cible.def.name} gagne l'effet de ${cible2.def.name}.`); break; }
+      case "pts_x": gagner(g, p, Math.min(c._x || 0, p.zone.filter(x => x.def.type === "Gadz").length), "cartes", c.def.name); break;
       case "pts_per_gadz": gagner(g, p, Math.min(6, p.zone.filter(x => x.def.type === "Gadz").length), "cartes", "La 23-151"); break;
       case "pins": cible.pinsBonus += 1; log(g, `Pin's Trad's : ${cible.def.name} donne 1 ressource de plus.`); break;
       case "sandwich": await engager(g, p, cible, null, 2); break;
@@ -493,6 +498,7 @@ function estimer(g, p, c) {
     case "ggt": return nG >= 3 ? 2 : 0;
     case "weeks_p3": return p.main.length <= 2 ? 2.3 : 1.2;
     case "cp": return nG >= 3 ? 1.5 : 0;
+    case "pts_x": { const x = maxX(g, p, c); return x >= 4 ? x * .6 : 0; }
     case "pts_per_gadz": return Math.min(6, p.zone.filter(x => x.def.type === "Gadz").length);
     case "pins": return 1.6;
     case "sandwich": return .9;
@@ -503,7 +509,7 @@ function estimer(g, p, c) {
     case "clocheton": { const libres = p.zone.filter(x => vrai_gadz(x) && !x.engage).length; return libres - meilleuresPaires(g, p).pts * .9; }
     case "monome": case "monome_all": { const l = p.zone.filter(x => vrai_gadz(x) && (f === "monome_all" || !x.engage) && peutParticiper(g, p, x)).length; const n = Math.min(l, c.def.fx[0] === "monome_all" ? 99 : +c.def.fx[0].split(":")[1]); return Math.max(0, n - 1) * 1.4 - (n >= 2 ? 1.2 : 0) + (c.def.fx.includes("after_draw") ? .7 : 0) + (c.def.fx.includes("after_point") ? 1 : 0); }
     default:
-      if (c.def.type === "Tabagn's") return p.tab ? .2 : (f === "tab_bordels" ? 2.5 : 1.8);
+      if (c.def.type === "Tabagn's") return p.tab ? .2 : (f === "tab_bordels" ? 3.5 : 1.8);
       return .5;
   }
 }
@@ -523,6 +529,7 @@ const choixIA = async (g, p, q) => {
     case "defausse": return q.options.slice().sort((x, y) => valeurGarder(g, p, x) - valeurGarder(g, p, y)).slice(0, q.n);
     case "degager": { const l = q.options.slice().sort((x, y) => (vrai_gadz(y) - vrai_gadz(x)) || (valeurRes(g, p, y) - valeurRes(g, p, x))); return l.slice(0, q.n); }
     case "regarder": { const besoinGadz = p.zone.filter(vrai_gadz).length + p.main.filter(vrai_gadz).length < 4; return q.options.slice().sort((x, y) => valeurCarte(g, p, y, besoinGadz) - valeurCarte(g, p, x, besoinGadz))[0]; }
+    case "x": return q.max;
     case "weeks": return q.options.slice().sort((x, y) => x.def.prom - y.def.prom).slice(0, q.n);
     case "monome": { const l = q.options.slice().sort((x, y) => x.def.prom - y.def.prom); return l.length <= q.n ? l : l.slice(0, q.n); }
   }
@@ -578,7 +585,7 @@ async function tourIA(g, pas = async () => {}) {
     let best = null, bestV = .25;
     for (const c of cands) {
       if (["gala", "rochefoucs", "biaude_pts"].includes(c.def.fx[0])) continue; // après les tuyssages
-      const k = c.def.type === "Gadz" ? c.def.cost : cout(g, p, c);
+      const k = c.def.costX ? maxX(g, p, c) : c.def.type === "Gadz" ? c.def.cost : cout(g, p, c);
       let v = c.def.proche ? .9 : estimer(g, p, c);
       const resType = c.def.type !== "Gadz" ? totalPool(p, c.def.type) - totalPool(p, null) + p.zone.filter(x => !x.engage && !reserves.has(x.uid) && fx(x).includes("res2:" + c.def.type)).length : 0;
       const manque = Math.max(0, k - libre - resType);

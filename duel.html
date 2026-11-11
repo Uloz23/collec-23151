@@ -190,6 +190,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .grille.multi > .choisi::after { content: "✓"; position: absolute; top: -10px; left: -10px; z-index: 7; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--good); color: #0d2414; font: 700 15px/1 var(--f-label); box-shadow: 0 1px 4px rgba(0,0,0,.6); }
 .lecture { margin: 0; min-height: 3em; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.04); border: 1px solid var(--line); font-size: 14.5px; line-height: 1.4; }
 .lecture b { font-family: var(--f-gadz); font-weight: 400; color: var(--gold-soft); font-size: 16px; }
+.xsel { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.xsel .btn { flex: 0 0 56px; font-size: 26px; padding: 6px; }
+.xsel output { font-family: var(--f-label); font-weight: 700; font-size: 44px; color: var(--gold-soft); min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.c .cpb { position: absolute; top: -6px; left: -6px; z-index: 3; padding: 1px 5px; border-radius: 999px; font: 700 10px/1.3 var(--f-label); letter-spacing: .04em; background: #5ac8d8; color: #062a30; box-shadow: 0 1px 3px rgba(0,0,0,.6); }
 .compte { font-family: var(--f-label); font-size: 13px; color: var(--muted); letter-spacing: .04em; }
 </style>
 </head>
@@ -221,8 +225,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 <script src="config.js?v=3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="carte.js?v=1"></script>
-<script src="jeu/cartes.js?v=8"></script>
-<script src="jeu/moteur.js?v=8"></script>
+<script src="jeu/cartes.js?v=9"></script>
+<script src="jeu/moteur.js?v=9"></script>
 <script>
 const M = window.Moteur;
 const $ = id => document.getElementById(id);
@@ -316,6 +320,7 @@ function carteJeu(c, opts = {}) {
   const coutAff = opts.cout != null ? opts.cout : (d.type === "Gadz" ? (d.cost || null) : d.cost);
   b.innerHTML = `${coutAff ? `<span class="cost">${coutAff}</span>` : ""}<span class="nm">${esc(d.name)}</span><span class="tx">${esc(d.text)}</span><span class="ft"><span>${esc(opts.court && d.type === "Gadz" && !d.proche && !d.conscrit ? String(d.prom) : opts.court && d.conscrit ? ".o.26" : promTxt(d))}</span><i class="rar ${d.rar}"></i></span>`;
   if (d.conscrit) b.insertAdjacentHTML("beforeend", `<span class="recus">${c.recus || 0}/3</span>`);
+  if (opts.zone && c.cpDe && c.cpDe.length) b.insertAdjacentHTML("beforeend", `<span class="cpb" title="Effet copié par CP">+CP</span>`);
   if (opts.zone) {
     if (c.crap >= 0) b.insertAdjacentHTML("beforeend", `<span class="tag crap">Crap's</span>`);
     else if (M.nouveau(g, null, c) && M.vrai_gadz(c)) b.insertAdjacentHTML("beforeend", `<span class="tag new">arrivé</span>`);
@@ -349,7 +354,7 @@ function rendre() {
   }
   for (const [p, id] of [[ia(), "tab-ia"], [moi(), "tab-moi"]]) { const s = $(id); s.textContent = p.tab ? p.tab.def.name : "vide"; s.className = "slot" + (p.tab ? " plein" : ""); s.onclick = p.tab ? () => fiche(p.tab, p) : null; }
   const m = $("main"); m.innerHTML = "";
-  moi().main.forEach(c => { const k = c.def.type === "Gadz" ? c.def.cost : M.cout(g, moi(), c); const el = carteEl(c, { cout: k || null }); if (g.actif === 0 && !occupe && M.jouable(g, moi(), c)) el.classList.add("jouable"); el.onclick = () => fiche(c, moi(), "main"); m.appendChild(el); });
+  moi().main.forEach(c => { const k = c.def.costX ? "X" : c.def.type === "Gadz" ? c.def.cost : M.cout(g, moi(), c); const el = carteEl(c, { cout: k || null }); if (g.actif === 0 && !occupe && M.jouable(g, moi(), c)) el.classList.add("jouable"); el.onclick = () => fiche(c, moi(), "main"); m.appendChild(el); });
   const p = moi(), types = ["Chant", "Trad's", "Manip'", "Tabagn's"].filter(t => p.pool[t]);
   let hint = "";
   if (g.fini) hint = "Partie terminée";
@@ -388,7 +393,7 @@ function fiche(c, p, ou) {
   const d = c.def, me = p === moi(), monTour = g.actif === 0 && !g.fini && !occupe;
   const acts = [];
   if (me && ou === "main") {
-    const k = d.type === "Gadz" ? d.cost : M.cout(g, p, c);
+    const k = d.costX ? "X" : d.type === "Gadz" ? d.cost : M.cout(g, p, c);
     if (M.jouable(g, p, c)) acts.push(`<button class="btn go" data-a="jouer" type="button">${d.type === "Gadz" ? (d.proche ? `Poser (${k})` : "Poser (gratuit)") : `Jouer (${k})`}</button>`);
     else acts.push(`<button class="btn" type="button" disabled>${raisonPasJouable(c)}</button>`);
   }
@@ -403,9 +408,9 @@ function fiche(c, p, ou) {
   if (c.engage) etat.push("engagé"); if (c.crap >= 0) etat.push("Crap's : ne peut ni tuysser ni être tuyssé");
   if (ou !== "main" && M.vrai_gadz(c) && M.nouveau(g, null, c)) etat.push(reglages.arrivee === "C" ? "vient d'arriver : ne fait rien ce tour" : "vient d'arriver : ne peut pas encore tuysser");
   if (c.pinsBonus) etat.push(`Pin's Trad's : +${c.pinsBonus} ressource`);
-  if (c.extraFx.length) etat.push("CP : a gagné un effet en plus");
+  (c.cpDe || []).forEach(id => { const d2 = M.PAR_ID[id]; if (d2) etat.push(`CP : a aussi l'effet de ${d2.name} (« ${d2.text} »)`); });
   if (ou !== "main" && d.type === "Gadz" && M.protege(g, p, c)) etat.push("protégé des Manip' adverses");
-  const vis = DB[d.id] ? vraieEl(c, DB[d.id], { cout: d.type === "Gadz" ? (d.cost || null) : M.cout(g, p, c) }).outerHTML : "";
+  const vis = DB[d.id] ? vraieEl(c, DB[d.id], { cout: d.costX ? "X" : d.type === "Gadz" ? (d.cost || null) : M.cout(g, p, c) }).outerHTML : "";
   const v = feuille(`<div class="fiche-haut">${vis}<div class="txt"><div class="sous">${esc(d.type)}${d.type === "Gadz" ? " · " + esc(promTxt(d)) : ""} · ${esc(d.rar)}</div><h2>${esc(d.name)}</h2><p>${esc(d.text)}</p>${etat.length ? `<p class="sous" style="text-transform:none;letter-spacing:0">${etat.map(esc).join(" · ")}</p>` : ""}</div></div><div class="row">${acts.join("")}<button class="btn" data-a="x" type="button">Fermer</button></div>`);
   v.querySelectorAll("[data-a]").forEach(b => b.onclick = async () => {
     const act = b.dataset.a; fermer(v);
@@ -436,6 +441,7 @@ function apres() { rendre(); if (g.fini) finPartie(); }
 // Choix demandés par les effets (cibles, monôme, Week's Fam's…)
 function choixHumain(g, p, q) {
   if (q.type === "payer") return choixPaiement(g, p, q);
+  if (q.type === "x") return choixX(g, p, q);
   return new Promise(res => {
     const titres = { defausse: "Quelle carte défausser ?", cible: "Choisis la cible", source: "Quel effet copier ?", weeks: `Quels Gadz poser ? (${q.n} max)`, degager: q.n > 1 ? `Quels Gadz dégager ? (${q.n} max)` : "Quel Gadz dégager ?", regarder: q.reste === "dessus" ? "Quelle carte piocher ? (les autres restent sur ta pioche)" : "Quelle carte garder ? (les autres vont sous ta pioche)", monome: `Qui forme le monôme ? (${q.n > 20 ? "tous" : q.n + " max"})` };
     if (q.type === "monome" && q.n > 20) return res(q.options);
@@ -457,6 +463,18 @@ function choixHumain(g, p, q) {
       gr.appendChild(el);
     });
     ok.onclick = () => { fermer(v); res(multi ? [...sel] : [...sel][0]); };
+    v.querySelector('[data-a="non"]').onclick = () => { fermer(v); res(null); };
+  });
+}
+
+// Coût X : tu choisis combien tu paies
+function choixX(g, p, q) {
+  return new Promise(res => {
+    let x = q.max;
+    const v = feuille(`<div class="sous">${esc(q.carte.def.name)} · coût X</div><h2>Combien veux-tu payer ?</h2><p class="lecture">${esc(q.carte.def.text)}</p><div class="xsel"><button class="btn" type="button" data-d="-1" aria-label="Moins">−</button><output id="x-v">${x}</output><button class="btn" type="button" data-d="1" aria-label="Plus">+</button></div><p class="compte">Maximum possible : ${q.max} (tes ressources et le nombre de Gadz en zone).</p><div class="row"><button class="btn go" data-a="ok" type="button">Payer ${x}</button><button class="btn" data-a="non" type="button">Annuler</button></div>`, { bloquant: true });
+    const maj = () => { v.querySelector("#x-v").textContent = x; v.querySelector('[data-a="ok"]').textContent = `Payer ${x}`; };
+    v.querySelectorAll("[data-d]").forEach(b => b.onclick = () => { x = Math.max(1, Math.min(q.max, x + +b.dataset.d)); maj(); });
+    v.querySelector('[data-a="ok"]').onclick = () => { fermer(v); res(x); };
     v.querySelector('[data-a="non"]').onclick = () => { fermer(v); res(null); };
   });
 }

@@ -46,7 +46,7 @@ const CARTES = [
   G(70, "Guillaume", 219, ["partner_draw"], "Zon de Pordo. Quand Pordo tuysse, pioche 1 carte.", { proche: "Zon", partner: "Pordo", cost: 1 }),
 
   // Tabagn's
-  C(34, "Bordel's", "Tabagn's", "mythique", 4, ["tab_bordels"], "Au début de ton tour, si tu as au moins 4 Gadz en zone de manip', marque 1 point."),
+  C(34, "Bordel's", "Tabagn's", "mythique", 4, ["tab_bordels"], "Au début de ton tour, marque 1 point, ou 2 si tu as au moins 5 Gadz en zone de manip'."),
   C(35, "Boquette", "Tabagn's", "commune", 2, ["tab_cost:Chant"], "Tes Chants coûtent 1 de moins."),
   C(36, "Siber's", "Tabagn's", "commune", 2, ["tab_cost:Manip'"], "Tes Manip' coûtent 1 de moins."),
   C(37, "KIN", "Tabagn's", "commune", 2, ["tab_kin"], "Quand un de tes Gadz quitte la zone de manip', pioche 1 carte."),
@@ -84,7 +84,7 @@ const CARTES = [
   C(65, "GGT", "Trad's", "peu-commune", 1, ["ggt"], "Ce tour-ci, un de tes Gadz peut tuysser 2 Gadz plus jeunes au lieu d'un seul, et ses tuyssages rapportent +1 point."),
   C(66, "Week's P3", "Trad's", "rare", 1, ["weeks_p3"], "Chaque joueur remet sa main dans sa pioche, mélange et repioche autant de cartes. Toi, tu en pioches 1 de plus et tu marques 1 point."),
   C(67, "CP", "Trad's", "peu-commune", 2, ["cp"], "Choisis un de tes Gadz : jusqu'à la fin de la partie, il gagne aussi l'effet d'un autre de tes Gadz en jeu."),
-  C(68, "La 23-151", "Trad's", "mythique", 4, ["pts_per_gadz"], "Marque 1 point par Gadz dans ta zone de manip' (6 maximum)."),
+  C(68, "La 23-151", "Trad's", "mythique", 0, ["pts_x"], "Coût X : marque X points, sans dépasser le nombre de Gadz dans ta zone de manip'.", { costX: true }),
   C(73, "Pin's Trad's", "Trad's", "commune", 1, ["pins_pts"], "Défausse 1 carte de ta main. Marque 1 point par Trad's dans ton K'jib (4 maximum).", { defausse: 1 }),
 
   // Carte provisoire pour tester une « remise à zéro » (pas encore dans la Collec')
