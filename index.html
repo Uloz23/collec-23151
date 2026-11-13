@@ -1301,7 +1301,7 @@ async function renderBoard() {
     const rows = await rpc("leaderboard", {});
     const rank = rows.findIndex(r => r.pseudo === state.pseudo);
     $("tab-fams-sub").textContent = rank < 0 ? "" : `${rank + 1}${rank ? "e" : "er"} / ${rows.length}`;
-    $("board").innerHTML = rows.map(r => `<li tabindex="0" role="button" data-pseudo="${esc(r.pseudo)}" class="peek${r.pseudo === state.pseudo ? " me" : ""}${peek && r.pseudo === peek.pseudo ? " seen" : ""}"><span class="bn">${esc(r.pseudo)}</span><span class="bs">${r.cartes} / ${CARDS.length}${r.variantes ? ` · ✦ ${r.variantes}` : ""}</span></li>`).join("") || "<li><span class=\"bs\">Personne n'a encore ouvert de booster.</span></li>";
+    $("board").innerHTML = rows.map(r => `<li tabindex="0" role="button" data-pseudo="${esc(r.pseudo)}" class="peek${r.pseudo === state.pseudo ? " me" : ""}${peek && r.pseudo === peek.pseudo ? " seen" : ""}"><span class="bn">${esc(r.pseudo)}</span><span class="bs">${r.cartes} / ${CARDS.length}${r.variantes ? ` · ✦ ${r.variantes} / ${CARDS.length * 3}` : ""}</span></li>`).join("") || "<li><span class=\"bs\">Personne n'a encore ouvert de booster.</span></li>";
   } catch (e) { $("board").innerHTML = `<li><span class="bs">Classement indisponible pour l'instant.</span></li>`; }
 }
 // Les clics sur les onglets passent avant showPage (écouteurs ajoutés plus haut) : on referme l'album de l'autre d'abord
