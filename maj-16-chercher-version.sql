@@ -14,7 +14,7 @@ begin
   if not exists (select 1 from public.cards where id = p_card and published) then raise exception 'carte_introuvable'; end if;
   if not exists (select 1 from public.owned where player_id = me and card_id = p_card and count > 0) then raise exception 'carte_pas_a_toi'; end if;
   return query
-    select pl.pseudo, o.count::int
+    select pl.pseudo::text, o.count::int
     from public.owned o join public.players pl on pl.id = o.player_id
     where o.card_id = p_card and o.variant = p_variant and o.count > 0 and pl.id <> me and not pl.is_test
     order by o.count desc, lower(pl.pseudo);

@@ -1323,7 +1323,12 @@ async function runSeek() {
     if ($("sk-card").value !== String(id) || $("sk-var").value !== v) return; // une autre recherche a été lancée entre-temps
     ul.innerHTML = rows.length ? rows.map(r => `<li><span class="sn">${esc(r.pseudo)}</span>${r.n > 1 ? `<span class="sd">en double</span>` : ""}<span class="sc">×${r.n}</span><button class="btn-ghost" type="button" data-p="${esc(r.pseudo)}">⇄ Échanger</button></li>`).join("")
       : `<li class="vide">Personne n'a encore la ${esc(VLABEL[v].toLowerCase())} de ${esc(card ? card.name : "cette carte")}.</li>`;
-  } catch (e) { ul.innerHTML = `<li class="vide">${esc(String(e.message || "").includes("variant_owners") ? "Il manque la mise à jour n° 16 dans Supabase." : errText(e))}</li>`; }
+  } catch (e) {
+    const m = String(e && e.message || "");
+    const txt = /variant_owners|schema cache|does not exist/.test(m) ? "Il manque la mise à jour n° 16 dans Supabase."
+      : Object.keys(ERRORS).some(k => m.includes(k)) ? errText(e) : `Recherche impossible pour l'instant (${m.slice(0, 120) || "erreur inconnue"}).`;
+    ul.innerHTML = `<li class="vide">${esc(txt)}</li>`;
+  }
 }
 $("seek-open").addEventListener("click", () => openSeek());
 $("sk-card").addEventListener("change", () => { fillSeekVariants($("sk-var").value); runSeek(); });
