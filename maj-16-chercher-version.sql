@@ -7,7 +7,7 @@
 
 create or replace function public.variant_owners(p_token uuid, p_card int, p_variant text)
 returns table (pseudo text, n int)
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql security definer set search_path = public as $$
 declare me uuid := public._player(p_token);
 begin
   if p_variant not in ('normale', 'brillante', 'textless', 'doree') then raise exception 'version_inconnue'; end if;
