@@ -403,6 +403,16 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 .prop-list .ps.ok { color: #7fe0a8; }
 .prop-list button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; }
 .prop-ov { align-items: stretch; }
+.sk-hint { margin: 0; text-align: center; font-family: var(--f-label); font-size: 14px; color: var(--muted); }
+.sk-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+.sk-list li { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line); background: rgba(241,223,174,.04); }
+.sk-list .sn { flex: 1; min-width: 0; font-family: var(--f-gadz); font-size: 19px; color: var(--gold-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sk-list .sc { font-family: var(--f-label); font-size: 15px; color: var(--muted); white-space: nowrap; }
+.sk-list .sd { font-family: var(--f-label); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: #7fe0a8; border: 1px solid rgba(127,224,168,.5); border-radius: 999px; padding: 1px 7px; }
+.sk-list .btn-ghost { padding: 7px 10px; font-size: 14px; }
+.sk-list .vide { justify-content: center; color: var(--muted); font-family: var(--f-label); }
+.v-seek { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.v-seek .btn-ghost { font-size: 14px; padding: 7px 11px; }
 .prop-ov .ov-top, .pf { width: 100%; max-width: 560px; margin: 0 auto; }
 .pf { display: grid; gap: 12px; padding-bottom: 30px; }
 .pf label { display: grid; gap: 5px; font-family: var(--f-label); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
@@ -514,6 +524,10 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
       <p class="board-hint">Touche un pseudo pour voir son album et lui proposer un échange</p>
       <ol class="board-list" id="board"></ol>
     </section>
+    <section class="props" aria-labelledby="seek-title">
+      <h2 class="page-title" id="seek-title">Chercher une version</h2>
+      <button class="btn-ghost" id="seek-open" type="button">🔍 Qui a la version qui me manque ?</button>
+    </section>
     <section class="props" aria-labelledby="props-title">
       <h2 class="page-title" id="props-title">Tes idées de cartes</h2>
       <button class="btn-primary" id="prop-new" type="button">💡 Proposer une carte</button>
@@ -540,6 +554,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
   <div class="vtabs" id="v-tabs"></div>
   <button class="btn-ghost" id="v-audio" type="button" hidden>♪ Écouter l'extrait</button>
   <button class="btn-primary" id="v-trade" type="button" hidden>⇄ Proposer un échange</button>
+  <div class="v-seek" id="v-seek" hidden></div>
   <p class="owned-line" id="v-owned"></p>
 </div>
 
@@ -578,6 +593,16 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
     <div class="tb-grid" id="tb-give"></div>
   </div>
   <div class="tb-foot"><p class="tb-sum" id="tb-sum"></p><button class="btn-primary" id="tb-send" type="button" disabled>Envoyer la proposition</button></div>
+</div>
+
+<div class="overlay prop-ov" id="seek-ov" hidden role="dialog" aria-modal="true" aria-labelledby="sk-title">
+  <div class="ov-top"><span class="ov-count" id="sk-title">Qui a cette version ?</span><button class="btn-ghost" id="sk-close" type="button">Fermer</button></div>
+  <div class="pf">
+    <p class="sk-hint">Seulement parmi les cartes que tu as déjà : les autres restent une surprise.</p>
+    <label>Carte<select id="sk-card"></select></label>
+    <label>Version recherchée<select id="sk-var"></select></label>
+    <ul class="sk-list" id="sk-list" aria-live="polite"></ul>
+  </div>
 </div>
 
 <div class="overlay prop-ov" id="prop-ov" hidden role="dialog" aria-modal="true" aria-labelledby="pf-title">
@@ -708,6 +733,7 @@ const ERRORS = {
   cadeau_ferme: "Les cadeaux entre joueurs sont désactivés pour l'instant.",
   pas_soi_meme: "Tu ne peux pas t'offrir un booster à toi-même 😉",
   free_gift: "Il manque la mise à jour n° 6 dans Supabase.",
+  carte_pas_a_toi: "Tu ne peux chercher que des cartes que tu as déjà.",
   rarete_differente: "Ces deux raretés ne s'échangent pas entre elles (Gadz, communes et peu communes d'un côté ; rares et mythiques de l'autre).",
   proposition_sans_nom: "Donne un nom à la carte.",
   proposition_vide: "Décris ton idée, ou ajoute une photo ou un texte.",
@@ -1262,12 +1288,49 @@ function renderViewer() {
     : `Possédée ${total} fois · incline la carte pour voir le reflet`;
   $("v-audio").hidden = !hasAudio(card);
   $("v-trade").hidden = !peek || state.isTest;
+  const manque = !peek && !state.isTest && ownedCount(card.id, state.owned) > 0 ? VORDER.filter(v => !(state.owned[card.id + ":" + v] > 0)) : [];
+  $("v-seek").hidden = !manque.length;
+  $("v-seek").innerHTML = manque.map(v => `<button class="btn-ghost" type="button" data-v="${v}">🔍 Qui a la ${VLABEL[v].toLowerCase()} ?</button>`).join("");
   // Place réservée sous la carte : onglets de versions + ligne du bas, plus le bouton son et le bouton d'échange s'ils sont là
-  $("viewer").style.setProperty("--v-reserve", (250 + (hasAudio(card) ? 60 : 0) + ($("v-trade").hidden ? 0 : 75)) + "px");
+  $("viewer").style.setProperty("--v-reserve", (250 + (hasAudio(card) ? 60 : 0) + ($("v-trade").hidden ? 0 : 75) + ($("v-seek").hidden ? 0 : 55)) + "px");
   const remix = audioFor(card, variant) !== audioFor(card, "normale");
   $("v-audio").textContent = remix ? "♪ Écouter le remix" : "♪ Écouter l'extrait";
 }
 $("v-audio").addEventListener("click", () => { if (viewing) { if (muted) { toast("Le son est coupé : réactive-le en haut de la page"); return; } playCardAudio(viewing.card, 0, viewing.variant); } });
+$("v-seek").addEventListener("click", e => { const b = e.target.closest("[data-v]"); if (!b || !viewing) return; const c = viewing.card; closeViewer(); openSeek(c.id, b.dataset.v); });
+// « Qui a cette version ? » : seulement parmi tes cartes ; l'image de la version recherchée n'est pas montrée
+function openSeek(cardId, variant) {
+  const mine = CARDS.filter(c => ownedCount(c.id, state.owned) > 0);
+  if (!mine.length) return toast("Ouvre d'abord quelques boosters !");
+  const sel = $("sk-card");
+  sel.innerHTML = mine.map(c => `<option value="${c.id}">${esc(c.name)}${c.type === "Gadz" && c.sub ? " · " + esc(c.sub) : ""}</option>`).join("");
+  sel.value = String(cardId && mine.some(c => c.id === cardId) ? cardId : mine[0].id);
+  fillSeekVariants(variant);
+  document.body.style.overflow = "hidden"; $("seek-ov").hidden = false;
+  runSeek();
+}
+function fillSeekVariants(pref) {
+  const id = +$("sk-card").value, manque = VORDER.filter(v => !(state.owned[id + ":" + v] > 0));
+  const list = manque.length ? manque : VORDER;
+  $("sk-var").innerHTML = list.map(v => `<option value="${v}">${VLABEL[v]}${manque.length ? "" : " (tu l'as déjà)"}</option>`).join("");
+  $("sk-var").value = list.includes(pref) ? pref : list[list.length - 1];
+}
+async function runSeek() {
+  const id = +$("sk-card").value, v = $("sk-var").value, ul = $("sk-list"), card = CARDS.find(c => c.id === id);
+  ul.innerHTML = `<li class="vide">Recherche…</li>`;
+  try {
+    const rows = await rpc("variant_owners", { p_token: TOKEN, p_card: id, p_variant: v });
+    if ($("sk-card").value !== String(id) || $("sk-var").value !== v) return; // une autre recherche a été lancée entre-temps
+    ul.innerHTML = rows.length ? rows.map(r => `<li><span class="sn">${esc(r.pseudo)}</span>${r.n > 1 ? `<span class="sd">en double</span>` : ""}<span class="sc">×${r.n}</span><button class="btn-ghost" type="button" data-p="${esc(r.pseudo)}">⇄ Échanger</button></li>`).join("")
+      : `<li class="vide">Personne n'a encore la ${esc(VLABEL[v].toLowerCase())} de ${esc(card ? card.name : "cette carte")}.</li>`;
+  } catch (e) { ul.innerHTML = `<li class="vide">${esc(String(e.message || "").includes("variant_owners") ? "Il manque la mise à jour n° 16 dans Supabase." : errText(e))}</li>`; }
+}
+$("seek-open").addEventListener("click", () => openSeek());
+$("sk-card").addEventListener("change", () => { fillSeekVariants($("sk-var").value); runSeek(); });
+$("sk-var").addEventListener("change", runSeek);
+const closeSeek = () => { $("seek-ov").hidden = true; document.body.style.overflow = ""; };
+$("sk-close").addEventListener("click", closeSeek);
+$("sk-list").addEventListener("click", e => { const b = e.target.closest("[data-p]"); if (!b) return; const id = +$("sk-card").value, v = $("sk-var").value; closeSeek(); openTrade(b.dataset.p, { want: [id, v] }); });
 function closeViewer() { stopCardAudio(); $("viewer").hidden = true; viewing = null; document.body.style.overflow = ""; }
 $("v-close").addEventListener("click", closeViewer);
 $("viewer").addEventListener("click", e => { if (e.target === $("viewer")) closeViewer(); });
@@ -1288,6 +1351,7 @@ $("viewer").addEventListener("click", e => { if (e.target === $("viewer")) close
 })();
 document.addEventListener("keydown", e => {
   if (e.key !== "Escape") return;
+  if (!$("seek-ov").hidden) { closeSeek(); return; }
   if (!$("viewer").hidden) closeViewer();
   else if (session) { session.phase === "summary" ? closeOpening() : showSummary(); }
 });
