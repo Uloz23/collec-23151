@@ -194,6 +194,7 @@ td.num { font-variant-numeric: tabular-nums; }
         <label for="e-rarity">Rareté<select id="e-rarity"><option value="gadz">Gadz</option><option value="commune">Commune</option><option value="peu-commune">Peu commune</option><option value="rare">Rare</option><option value="mythique">Mythique</option></select></label>
         <label for="e-sub">Promo (Gadz, ou celle de son gadz pour un proche)<input id="e-sub" placeholder="Bo211"></label>
         <label for="e-kind">Proche d'un gadz (vide pour un gadz)<input id="e-kind" list="kinds" placeholder="Za, Zon, Pote…" maxlength="20"><datalist id="kinds"><option value="Za"><option value="Zon"><option value="Pote"><option value="Enfant"></datalist></label>
+        <label class="check" for="e-visc" id="e-visc-l"><input type="checkbox" id="e-visc"> Viscrit (affiche « Viscrit » à la place de sa génération)</label>
         <label for="e-fams">Fam's (vide = 23-151)<input id="e-fams"></label>
       </div>
       <div class="row" style="align-items:end;gap:12px">
@@ -624,7 +625,7 @@ function openEditor(c) {
   $("e-title").textContent = c._new ? "Nouvelle carte" : `Carte « ${c.name} » · code ${pad(c.id)}`;
   $("e-id").value = c.id; $("e-id").disabled = !c._new;
   $("e-name").value = c.name; $("e-type").value = c.type; $("e-rarity").value = c.rarity;
-  $("e-sub").value = c.sub || ""; $("e-kind").value = c.kind || "";
+  $("e-sub").value = c.sub || ""; $("e-kind").value = c.kind || ""; $("e-visc").checked = !!c.viscrit;
   setColor("e-cbg", c.color_bg, "#4a2a3a"); setColor("e-cfg", c.color_fg, "#f1dfae"); colorInfo(); $("e-fams").value = c.fams || ""; $("e-text").value = c.text || ""; $("e-pub").checked = !!c.published;
   $("e-del").hidden = !!c._new; say($("e-status"), "");
   showMedia(); window.scrollTo(0, 0);
@@ -639,7 +640,7 @@ $("e-cdef").onclick = () => { setColor("e-cbg", null, "#4a2a3a"); setColor("e-cf
 let NUMS = {}, NTOTAL = 0, previewT = null, cropShot = null;
 function sendPreview() {
   const fr = $("e-preview"); if (!current || !fr || !fr.contentWindow) return;
-  const card = { ...current, id: +$("e-id").value || current.id, name: $("e-name").value.trim() || "Sans nom", type: $("e-type").value, rarity: $("e-rarity").value,
+  const card = { ...current, viscrit: $("e-visc").checked, id: +$("e-id").value || current.id, name: $("e-name").value.trim() || "Sans nom", type: $("e-type").value, rarity: $("e-rarity").value,
     sub: $("e-sub").value.trim(), kind: $("e-kind").value.trim(), color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), fams: $("e-fams").value.trim(), text: $("e-text").value.trim(), art: current.art === "bordels" ? "bordels" : (ART[$("e-type").value] || "trad"), hue: current.hue ?? 30 };
   if (cropShot) { if (cropShot.variant === "normale") card.photo_normale = cropShot.url; else card.photo_textless = cropShot.url; }
   fr.contentWindow.postMessage({ type: "apercu", card, num: NUMS[current.id] || card.id, total: Math.max(NTOTAL, 1) }, location.origin);
@@ -650,7 +651,8 @@ window.addEventListener("message", e => {
   if (e.data.type === "apercu-pret") sendPreview();
   if (e.data.type === "apercu-taille") $("e-preview").style.height = Math.min(Math.max(e.data.h, 200), 1400) + "px";
 });
-["e-name", "e-type", "e-rarity", "e-sub", "e-kind", "e-fams", "e-text", "e-id"].forEach(id => $(id).addEventListener("input", queuePreview));
+["e-name", "e-type", "e-rarity", "e-sub", "e-kind", "e-fams", "e-text", "e-id", "e-visc"].forEach(id => $(id).addEventListener("input", queuePreview));
+$("e-visc").addEventListener("change", queuePreview);
 function showMedia() {
   queuePreview();
   const c = current;
@@ -662,7 +664,9 @@ $("e-close").onclick = () => { pendingProp = null; $("editor").hidden = true; $(
 const ART = { "Gadz": "gadz", "Trad's": "trad", "Chant": "chant", "Manip'": "manip", "Tabagn's": "tabagn" };
 $("e-save").onclick = async () => {
   const row = { id: +$("e-id").value, name: $("e-name").value.trim(), type: $("e-type").value, rarity: $("e-rarity").value,
-    sub: $("e-sub").value.trim() || null, color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), kind: $("e-type").value === "Gadz" ? ($("e-kind").value.trim() || null) : null, fams: $("e-fams").value.trim() || null, text: $("e-text").value.trim(), published: $("e-pub").checked, updated_at: new Date().toISOString() };
+    sub: $("e-sub").value.trim() || null, color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), kind: $("e-type").value === "Gadz" ? ($("e-kind").value.trim() || null) : null, viscrit: $("e-type").value === "Gadz" && !$("e-kind").value.trim() && $("e-visc").checked, fams: $("e-fams").value.trim() || null, text: $("e-text").value.trim(), published: $("e-pub").checked, updated_at: new Date().toISOString() };
+  // Sans la mise à jour n° 18, la colonne « viscrit » n'existe pas : on ne l'envoie que si elle sert
+  if (!("viscrit" in current) && !row.viscrit) delete row.viscrit;
   if (!row.name) return say($("e-status"), "Donne un nom à la carte.", false);
   if (row.type === "Gadz" && !row.sub) return say($("e-status"), "Un Gadz a besoin de sa promo (Bo211…).", false);
   // L'illustration suit le type de la carte (sauf les illustrations spéciales comme Bordel's)
@@ -670,7 +674,7 @@ $("e-save").onclick = async () => {
   if (current._new) row.hue = Math.floor(Math.random() * 360);
   const q = current._new ? SB.from("cards").insert(row).select().single() : SB.from("cards").update(row).eq("id", row.id).select().single();
   const { data, error } = await q;
-  if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message.includes("color_") ? "il manque la mise à jour n° 5 dans Supabase." : error.message.includes("kind") ? "il manque la mise à jour n° 4 dans Supabase." : error.message), false);
+  if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message.includes("viscrit") ? "il manque la mise à jour n° 18 dans Supabase (case Viscrit)." : error.message.includes("color_") ? "il manque la mise à jour n° 5 dans Supabase." : error.message.includes("kind") ? "il manque la mise à jour n° 4 dans Supabase." : error.message), false);
   current = data;
   // On met la liste à jour tout de suite : la prochaine « Nouvelle carte » prendra le numéro suivant
   const ix = cards.findIndex(c => c.id === data.id); if (ix >= 0) cards[ix] = data; else cards.push(data); renderCards();

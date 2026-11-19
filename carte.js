@@ -37,7 +37,7 @@ function textboxHTML(card) {
   if (!gadz && !card.text) return `<div class="textbox empty"></div>`; // cadre vide : distingue la normale de la textless
   const p = gadz ? pOf(card) : null;
   const sz = card.text ? textSize(card.text) : "";
-  if (p) return `<div class="textbox gadz ${sz}"><div class="pn">${p === 1 ? ".onscrit" : p === 2 ? "Ancien" : "P" + p}</div>${card.text ? `<p class="pn-sub">${esc(card.text)}</p>` : ""}</div>`;
+  if (p) return `<div class="textbox gadz ${sz}"><div class="pn">${card.viscrit ? "Viscrit" : p === 1 ? ".onscrit" : p === 2 ? "Ancien" : "P" + p}</div>${card.text ? `<p class="pn-sub">${esc(card.text)}</p>` : ""}</div>`;
   return `<div class="textbox ${sz}"><p>${esc(card.text)}</p></div>`;
 }
 // Fond neutre des Gadz sans photo

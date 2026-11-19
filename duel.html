@@ -227,7 +227,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 <script src="config.js?v=3"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="carte.js?v=4"></script>
+<script src="carte.js?v=5"></script>
 <script src="jeu/cartes.js?v=10"></script>
 <script src="jeu/moteur.js?v=9"></script>
 <script>
@@ -244,7 +244,7 @@ let CARDS = [], DB = {}, OWNED = {}, PSEUDO = null;
 const Rendu = window.CarteRendu({ total: () => CARDS.length, hasAudio: c => !!c.audio, RLABEL });
 function mapCard(c) {
   return ({
-    id: c.id, name: c.name.replace(/\s*\/\/\s*/g, " "), nameRaw: c.name, type: c.type, sub: c.sub || "", colors: { bg: /^#[0-9a-f]{6}$/i.test(c.color_bg || "") ? c.color_bg : null, fg: /^#[0-9a-f]{6}$/i.test(c.color_fg || "") ? c.color_fg : null }, kind: (c.kind || "").trim(), fams: c.fams || "", rarity: c.rarity,
+    id: c.id, name: c.name.replace(/\s*\/\/\s*/g, " "), nameRaw: c.name, viscrit: !!c.viscrit, type: c.type, sub: c.sub || "", colors: { bg: /^#[0-9a-f]{6}$/i.test(c.color_bg || "") ? c.color_bg : null, fg: /^#[0-9a-f]{6}$/i.test(c.color_fg || "") ? c.color_fg : null }, kind: (c.kind || "").trim(), fams: c.fams || "", rarity: c.rarity,
     art: c.art === "bordels" ? "bordels" : ({ "Gadz": "gadz", "Trad's": "trad", "Chant": "chant", "Manip'": "manip", "Tabagn's": "tabagn" }[c.type] || c.art || "trad"), hue: c.hue ?? 30, text: c.text || "",
     photo: (c.photo_normale || c.photo_textless) ? { normale: media(c.photo_normale || c.photo_textless), textless: media(c.photo_textless || c.photo_normale) } : null,
     audio: null
@@ -292,7 +292,7 @@ const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;"
 const pause = ms => new Promise(r => setTimeout(r, ms));
 // Génération (Pn) comme sur les cartes de la Collec' : .onscrit = P1, Ancien = P2, puis P3, P4…
 const pNum = d => { if (d.type !== "Gadz" || d.proche) return null; if (d.conscrit) return 1; const db = DB[d.id]; const p = db && Rendu.pOf(db); return p || (Rendu.pOf({ type: "Gadz", sub: "Bo" + d.prom }) || null); };
-const pn = d => { const p = pNum(d); if (p == null) return d.proche || d.type; return p <= 1 ? ".onscrit" : p === 2 ? "Ancien" : "P" + p; };
+const pn = d => { const p = pNum(d); if (p == null) return d.proche || d.type; if (DB[d.id] && DB[d.id].viscrit) return "Viscrit"; return p <= 1 ? ".onscrit" : p === 2 ? "Ancien" : "P" + p; };
 const promTxt = d => d.conscrit ? ".onscrit" : d.proche ? d.proche : d.type === "Gadz" ? "Bo" + d.prom : d.type;
 
 // ---------- Rendu d'une carte ----------
