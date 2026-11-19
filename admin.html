@@ -65,6 +65,7 @@ td.num { font-variant-numeric: tabular-nums; }
 .pr-list { display: grid; gap: 12px; }
 .pr { display: grid; grid-template-columns: 1fr auto; gap: 10px 14px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(241,223,174,.04); }
 .pr.done { opacity: .55; }
+.e-prop { margin-bottom: 12px; border-color: var(--gold); background: rgba(212,178,106,.08); }
 .pr h3 { margin: 0; font-family: var(--f-gadz); font-weight: 400; font-size: 20px; color: var(--gold-soft); }
 .pr .meta { font-family: var(--f-label); font-size: 13px; letter-spacing: .04em; color: var(--muted); }
 .pr p { margin: 4px 0 0; white-space: pre-line; }
@@ -185,6 +186,7 @@ td.num { font-variant-numeric: tabular-nums; }
 
     <section class="panel editor" id="editor" hidden style="margin-top:14px">
       <div class="top"><h2 id="e-title">Carte</h2><button class="btn" id="e-close" type="button">Retour à la liste</button></div>
+      <div class="pr e-prop" id="e-prop" hidden></div>
       <div class="grid2">
         <label for="e-id">Code (pour les fichiers)<input id="e-id" type="number" min="1"></label>
         <label for="e-name">Nom<input id="e-name" maxlength="44" placeholder="« // » pour forcer un retour à la ligne"></label>
@@ -358,7 +360,7 @@ $("pr-refresh").onclick = loadProps;
 async function goEditor(card, prop, cropVariant) {
   if (!cards.length) await loadCards();
   document.querySelector('.tab[data-tab="cards"]').click();
-  pendingProp = prop;
+  pendingProp = prop; editorProp = prop || null;
   openEditor(card);
   if (cropVariant && prop.photo) { try { startCrop(await loadImageUrl(prop.photo), cropVariant, true); } catch (e) {} }
 }
@@ -604,8 +606,19 @@ $("c-pub").onclick = async () => {
 $("c-search").oninput = renderCards;
 $("c-list").onclick = e => { const t = e.target.closest(".ctile"); if (t) openEditor(cards.find(c => c.id === +t.dataset.id)); };
 $("c-new").onclick = async () => { try { await loadCards(); } catch (e) {} openEditor({ id: Math.max(0, ...cards.map(c => c.id)) + 1, name: "", type: "Trad's", rarity: "commune", sub: "", fams: "", text: "", published: false, _new: true }); };
+// Proposition à l'origine de la carte : on garde son contenu sous les yeux pendant la création
+let editorProp = null;
+function showEditorProp() {
+  const x = editorProp, box = $("e-prop");
+  box.hidden = !x; if (!x) { box.innerHTML = ""; return; }
+  box.innerHTML = `<div><div class="meta">Proposition de ${esc(x.pseudo)} · ${when(x.created_at)}</div>
+    <h3>${x.kind === "amelioration" ? "Amélioration : " + esc(x.card_name || "carte") : esc(x.name || "Sans nom")}</h3>${x.kind === "amelioration" ? "" : `<div class="meta">Type proposé : ${esc(x.type || "non précisé")}</div>`}
+    ${x.idea ? `<p>${esc(x.idea)}</p>` : ""}${x.flavor ? `<p class="flv">« ${esc(x.flavor)} »</p>` : ""}</div>
+    ${x.photo ? `<img src="${x.photo}" alt="Photo proposée" data-zoom>` : "<span></span>"}`;
+}
+$("e-prop").addEventListener("click", e => { if (e.target.matches("img[data-zoom]")) window.open().document.write(`<img src="${e.target.src}" style="max-width:100%">`); });
 function openEditor(c) {
-  current = c;
+  current = c; if (!pendingProp) editorProp = null; showEditorProp();
   $("tab-cards").hidden = true; $("editor").hidden = false; $("cropper").hidden = true;
   $("e-title").textContent = c._new ? "Nouvelle carte" : `Carte « ${c.name} » · code ${pad(c.id)}`;
   $("e-id").value = c.id; $("e-id").disabled = !c._new;
