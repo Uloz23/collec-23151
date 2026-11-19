@@ -374,7 +374,7 @@ $("pr-list").addEventListener("click", async e => {
   }
   if (act === "done") { const { error } = await SB.rpc("admin_proposal_done", { p_id: x.id }); if (error) return say($("pr-status"), "Erreur : " + error.message, false); return loadProps(); }
   if (act === "create") {
-    if (!cards.length) await loadCards();
+    try { await loadCards(); } catch (e) {}
     const type = TYPE_ORDER.includes(x.type) ? x.type : "Trad's";
     return goEditor({ id: Math.max(0, ...cards.map(c => c.id)) + 1, name: x.name || "", type, rarity: type === "Gadz" ? "gadz" : "commune", sub: "", fams: "", text: x.flavor || "", published: false, _new: true }, x, null);
   }
@@ -603,7 +603,7 @@ $("c-pub").onclick = async () => {
 };
 $("c-search").oninput = renderCards;
 $("c-list").onclick = e => { const t = e.target.closest(".ctile"); if (t) openEditor(cards.find(c => c.id === +t.dataset.id)); };
-$("c-new").onclick = () => openEditor({ id: Math.max(0, ...cards.map(c => c.id)) + 1, name: "", type: "Trad's", rarity: "commune", sub: "", fams: "", text: "", published: false, _new: true });
+$("c-new").onclick = async () => { try { await loadCards(); } catch (e) {} openEditor({ id: Math.max(0, ...cards.map(c => c.id)) + 1, name: "", type: "Trad's", rarity: "commune", sub: "", fams: "", text: "", published: false, _new: true }); };
 function openEditor(c) {
   current = c;
   $("tab-cards").hidden = true; $("editor").hidden = false; $("cropper").hidden = true;
@@ -657,7 +657,10 @@ $("e-save").onclick = async () => {
   const q = current._new ? SB.from("cards").insert(row).select().single() : SB.from("cards").update(row).eq("id", row.id).select().single();
   const { data, error } = await q;
   if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message.includes("color_") ? "il manque la mise à jour n° 5 dans Supabase." : error.message.includes("kind") ? "il manque la mise à jour n° 4 dans Supabase." : error.message), false);
-  current = data; $("e-id").disabled = true; $("e-del").hidden = false; $("e-title").textContent = `Carte « ${data.name} » · code ${pad(data.id)}`;
+  current = data;
+  // On met la liste à jour tout de suite : la prochaine « Nouvelle carte » prendra le numéro suivant
+  const ix = cards.findIndex(c => c.id === data.id); if (ix >= 0) cards[ix] = data; else cards.push(data); renderCards();
+  $("e-id").disabled = true; $("e-del").hidden = false; $("e-title").textContent = `Carte « ${data.name} » · code ${pad(data.id)}`;
   if (pendingProp && pendingProp.kind === "nouvelle") {
     const pp = pendingProp; pendingProp = null;
     try { await SB.rpc("admin_proposal_done", { p_id: pp.id }); } catch (e) {}
