@@ -197,6 +197,21 @@ button { font: inherit; color: inherit; }
   100% { filter: drop-shadow(0 0 14px #ff4fa3) drop-shadow(0 0 36px rgba(255,79,163,.7)); }
 }
 .ov-hint.gold { color: #ffe9a8; text-shadow: 0 0 12px rgba(255,200,80,.8); }
+/* God pack : visible du début à la fin de l'ouverture */
+#opening.godmode { background: radial-gradient(ellipse 90% 60% at 50% 45%, #3d2c0b, #120c04 60%, #0b0707 85%); }
+#opening.godmode::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; box-shadow: inset 0 0 0 3px rgba(255,214,110,.9), inset 0 0 70px rgba(255,190,60,.45); animation: godframe 2.2s ease-in-out infinite alternate; }
+#opening.godmode::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .7;
+  background-image: radial-gradient(2px 2px at 12% 80%, #fff3c4, transparent), radial-gradient(1.5px 1.5px at 30% 30%, #ffe9a8, transparent), radial-gradient(2px 2px at 55% 70%, #fff, transparent), radial-gradient(1.5px 1.5px at 75% 20%, #ffd86b, transparent), radial-gradient(2px 2px at 90% 60%, #fff3c4, transparent), radial-gradient(1.5px 1.5px at 45% 95%, #ffe9a8, transparent);
+  background-size: 100% 100%; animation: godrise 6s linear infinite; }
+#opening.godmode > * { position: relative; z-index: 1; }
+@keyframes godframe { from { box-shadow: inset 0 0 0 2px rgba(255,214,110,.6), inset 0 0 40px rgba(255,190,60,.3); } to { box-shadow: inset 0 0 0 4px rgba(255,236,170,1), inset 0 0 90px rgba(255,190,60,.6); } }
+@keyframes godrise { from { background-position: 0 0; } to { background-position: 0 -100vh; } }
+#opening.godmode .ov-count { color: #ffe9a8; text-shadow: 0 0 10px rgba(255,200,80,.9); font-weight: 700; }
+.pack.god .pack-body, .pack.god .pack-top { background: linear-gradient(135deg, #4a3205, #d9ad45 22%, #fff3c4 38%, #b8860b 52%, #6c4f9d 74%, #e8c35a 92%); }
+.pack.god .pack-title, .pack.god .pack-sub { color: #2a1a02; text-shadow: 0 0 2cqw rgba(255,243,196,.9); }
+.pack.god:not(.spin):not(.torn) { animation: goldhalo 1.3s ease-in-out infinite alternate; }
+.ov-msg { max-width: 420px; margin: 0; padding: 10px 16px; border-radius: 12px; border: 1px solid rgba(255,214,110,.7); background: rgba(255,214,110,.1); color: #ffe9a8; font-family: var(--f-label); font-size: 17px; letter-spacing: .03em; text-align: center; box-shadow: 0 0 20px rgba(255,190,60,.25); }
+@media (prefers-reduced-motion: reduce) { #opening.godmode::before, #opening.godmode::after, .pack.god { animation: none !important; } }
 @media (prefers-reduced-motion: reduce) { .pack.spin { animation: none; } }
 .pack.torn.to-left .pack-top { transform-origin: 100% 100%; transform: translate(-35%, -140%) rotate(28deg); }
 .pack.torn .pack-body { transform: translateY(70%) scale(.92); opacity: 0; }
@@ -336,7 +351,8 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .giver-body { display: grid; gap: 12px; margin-top: 12px; }
 .giver-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
 .giver-row label { display: grid; gap: 4px; font-family: var(--f-label); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); width: 90px; }
-.giver-god { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-family: var(--f-label); font-size: 14px; letter-spacing: .06em; text-transform: uppercase; color: var(--gold-soft); cursor: pointer; }
+.giver-god { display: grid; gap: 4px; margin-top: 10px; font-family: var(--f-label); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.giver-god select { font: inherit; text-transform: none; letter-spacing: 0; font-size: 15px; padding: 8px; border-radius: 9px; background: rgba(241,223,174,.06); color: var(--gold-soft); border: 1px solid rgba(241,223,174,.25); max-width: 100%; }
 .giver-row label.grow { flex: 1 1 180px; width: auto; }
 .giver input[type=number], .giver input:not([type]) { width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: rgba(241,223,174,.06); color: var(--parchment); font-size: 16px; }
 .giver-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; max-height: 260px; overflow: auto; }
@@ -491,7 +507,11 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
           <label for="gv-count">Nombre<input id="gv-count" type="number" min="1" max="20" value="1"></label>
           <label for="gv-reason" class="grow">Motif<input id="gv-reason" placeholder="Manip' réussie au resto" maxlength="80"></label>
         </div>
-        <label class="giver-god"><input type="checkbox" id="gv-god"><span>✨ God pack garanti</span></label>
+        <label class="giver-god" for="gv-mode">Offrir<select id="gv-mode">
+          <option value="booster">Des boosters (ajoutés à sa réserve)</option>
+          <option value="god">✨ God pack : son prochain booster, avec ton message</option>
+          <option value="discret">✨ God pack discret : son prochain booster, sans rien dire</option>
+        </select></label>
         <div class="giver-list" id="gv-list"></div>
         <div class="giver-row">
           <button class="btn-primary" id="gv-send" type="button">Offrir aux cochés</button>
@@ -546,6 +566,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 
 <div class="overlay" id="opening" hidden role="dialog" aria-modal="true" aria-label="Ouverture du booster">
   <div class="ov-top"><span class="ov-count" id="ov-count"></span><button class="btn-ghost" id="ov-skip" type="button">Tout révéler</button></div>
+  <p class="ov-msg" id="ov-msg" hidden></p>
   <div class="ov-stage" id="ov-stage" tabindex="0" role="button" aria-label="Continuer"></div>
   <p class="ov-hint" id="ov-hint"></p>
 </div>
@@ -730,7 +751,7 @@ const ERRORS = {
   bloque: "Trop d'essais : réessaie dans 5 minutes.",
   pas_de_booster: "Tu n'as plus de booster pour l'instant.",
   pas_autorise: "Tu n'as pas (ou plus) le droit d'offrir des boosters.",
-  p_god: "Les god packs offerts ne sont pas encore activés (mise à jour n° 19).",
+  god_bless: "Les god packs garantis ne sont pas encore activés (mise à jour n° 19).",
   session_invalide: "Ta session a expiré : reconnecte-toi.",
   joueur_introuvable: "Ce joueur n'existe plus.",
   cadeau_attente: "Tu as déjà offert un booster récemment : patiente un peu.",
@@ -1049,13 +1070,16 @@ async function startOpening() {
   const pulls = res.pulls.map(p => ({ card: CARDS.find(c => c.id === p.card_id), variant: p.variant, newCard: p.new_card, newVariant: p.new_variant })).filter(p => p.card);
   pulls.sort((a, b) => score(a) - score(b));
   applyState(res.state);
-  session = { pulls, i: -1, phase: "pack", god: !!res.god };
+  session = { pulls, i: -1, phase: "pack", god: !!res.god, msg: res.god_msg || "" };
+  $("opening").classList.toggle("godmode", session.god);
+  showMsg(session.god && session.msg);
   document.body.style.overflow = "hidden";
   $("opening").hidden = false;
   $("ov-skip").hidden = false;
   showPack();
   $("ov-stage").focus();
 }
+function showMsg(on) { const m = $("ov-msg"); m.hidden = !on || !session || !session.msg; if (!m.hidden) m.textContent = "✨ " + session.msg; }
 function showPack() {
   const st = $("ov-stage"); st.innerHTML = "";
   const pk = document.createElement("div");
@@ -1066,6 +1090,13 @@ function showPack() {
   st.appendChild(pk);
   $("ov-count").textContent = "Booster · 23-151";
   setHint("Touche le booster, ou fais glisser ton doigt de côté pour le découper");
+  if (session.god) {
+    pk.classList.add("god");
+    pk.querySelector(".pack-title").textContent = "God pack";
+    pk.querySelector(".pack-sub").textContent = "✨ 5 cartes ✨";
+    $("ov-count").textContent = "✨ God pack ✨";
+    setHint("Un god pack ! Touche ou glisse pour l'ouvrir", "big gold");
+  }
 
 }
 
@@ -1135,7 +1166,7 @@ function tearPack(dir = 1) {
     const pk0 = $("ov-stage").querySelector(".pack");
     pk0.style.setProperty("--cut", "0%");
     pk0.classList.add("spin", special === "gold" ? "sp-gold" : "sp-tl");
-    setHint(special === "gold" ? "Ce booster brille d'une drôle de lueur dorée…" : "Ce booster scintille de toutes les couleurs…", special === "gold" ? "big gold" : "big");
+    if (session.god) setHint("Le god pack s'illumine…", "big gold"); else setHint(special === "gold" ? "Ce booster brille d'une drôle de lueur dorée…" : "Ce booster scintille de toutes les couleurs…", special === "gold" ? "big gold" : "big");
     buzz([40, 60, 40, 60, 40, 60, 120]);
     sfx.spin && sfx.spin(special);
     setTimeout(() => { if (!session || session.phase !== "spinning") return; pk0.classList.remove("spin"); session.phase = "pack"; tearPack(dir); }, 1500);
@@ -1158,8 +1189,9 @@ function tearPack(dir = 1) {
   if (session.god) {
     setTimeout(() => sfx.god(), 200);
     const fl = document.createElement("div"); fl.className = "godflash"; $("opening").appendChild(fl); setTimeout(() => fl.remove(), 1800);
-    $("ov-count").textContent = "God pack";
-    setHint("God pack ! 2 Gadz et 3 rares ou mythiques, toutes en variante", "big mythic");
+    $("ov-count").textContent = "✨ God pack ✨";
+    showMsg(false);
+    setHint("God pack ! Au moins une dorée et une full art t'attendent", "big gold");
   }
   setTimeout(() => { if (session) { session.phase = "cards"; dealNext(); } }, session.god ? 1700 : 900);
 }
@@ -1192,7 +1224,7 @@ function dealNext() {
   const burst = document.createElement("div"); burst.className = "burst";
   d.append(burst, f);
   st.appendChild(d);
-  $("ov-count").textContent = `Carte ${session.i + 1} / ${session.pulls.length}`;
+  $("ov-count").textContent = session.god ? `✨ God pack · ${session.i + 1}/${session.pulls.length}` : `Carte ${session.i + 1} / ${session.pulls.length}`;
   setHint(r >= 2 ? "Ça brille… touche ou glisse pour retourner" : "Touche ou glisse pour retourner la carte");
 }
 function reveal(d) {
@@ -1221,7 +1253,8 @@ function showSummary() {
   if (!session) return;
   session.phase = "summary";
   $("ov-skip").hidden = true;
-  $("ov-count").textContent = "Ton booster";
+  $("ov-count").textContent = session.god ? "✨ Ton god pack ✨" : "Ton booster";
+  showMsg(session.god && session.msg);
   const st = $("ov-stage"); st.innerHTML = "";
   const g = document.createElement("div"); g.className = "summary";
   session.pulls.forEach((p, i) => {
@@ -1251,6 +1284,7 @@ function closeOpening() {
   stopCardAudio();
   session = null;
   $("opening").hidden = true;
+  $("opening").classList.remove("godmode"); $("ov-msg").hidden = true;
   document.body.style.overflow = "";
   renderAll();
   $("open-btn").focus();
@@ -1402,16 +1436,20 @@ async function loadTargets() {
     $("gv-list").innerHTML = rows.length ? rows.map(r => `<label><input type="checkbox" value="${r.id}"><span>${esc(r.pseudo)}</span></label>`).join("") : `<p class="giver-status">Personne d'autre n'est encore inscrit.</p>`;
   } catch (e) { $("gv-status").textContent = errText(e); }
 }
+$("gv-mode").addEventListener("change", () => { const d = $("gv-mode").value === "discret"; $("gv-reason").disabled = d; $("gv-reason").placeholder = d ? "(discret : aucun message)" : $("gv-mode").value === "god" ? "Message (facultatif)" : "Manip' réussie au resto"; });
 $("giver").addEventListener("toggle", () => { if ($("giver").open) loadTargets(); });
 async function giveTo(ids) {
-  const god = $("gv-god").checked, n = parseInt($("gv-count").value, 10) || 1;
-  const reason = $("gv-reason").value.trim() || (god ? "God pack offert ✨" : "Booster offert");
+  const mode = $("gv-mode").value, n = parseInt($("gv-count").value, 10) || 1;
   try {
-    const args = { p_token: TOKEN, p_ids: ids, p_count: n, p_reason: reason };
-    if (god) args.p_god = true;
-    const served = await rpc("gift_as_player", args);
-    $("gv-status").textContent = `${n} ${god ? "god pack" : "booster"}${n > 1 ? "s" : ""} offert${n > 1 ? "s" : ""} à ${served} joueur${served > 1 ? "s" : ""}.`;
-    $("gv-god").checked = false;
+    if (mode === "booster") {
+      const reason = $("gv-reason").value.trim() || "Booster offert";
+      const served = await rpc("gift_as_player", { p_token: TOKEN, p_ids: ids, p_count: n, p_reason: reason });
+      $("gv-status").textContent = `${n} booster${n > 1 ? "s" : ""} offert${n > 1 ? "s" : ""} à ${served} joueur${served > 1 ? "s" : ""}.`;
+    } else {
+      const served = await rpc("god_bless", { p_token: TOKEN, p_ids: ids, p_count: n, p_msg: mode === "god" ? $("gv-reason").value.trim() : "", p_discret: mode === "discret" });
+      $("gv-status").textContent = `${n > 1 ? `Les ${n} prochains boosters` : "Le prochain booster"} de ${served} joueur${served > 1 ? "s" : ""} ser${n > 1 ? "ont des god packs" : "a un god pack"}${mode === "discret" ? ", en toute discrétion" : ""}.`;
+    }
+    $("gv-mode").value = "booster"; $("gv-reason").disabled = false;
     document.querySelectorAll("#gv-list input:checked").forEach(c => c.checked = false);
   } catch (e) { $("gv-status").textContent = errText(e); }
 }
