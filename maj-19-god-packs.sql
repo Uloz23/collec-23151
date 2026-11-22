@@ -1,27 +1,26 @@
 -- =====================================================================
 --  Collec' 23-151 : mise à jour n° 19
 --  God packs à la hauteur de leur rareté :
---   - dorées et full art bien plus fréquentes (réglage "god_pack" > "variants") ;
---   - au moins une dorée ou full art garantie (réglage "god_pack" > "min") ;
---   - une commune ou une peu commune tirée dans un god pack est toujours dorée ou full art
---     (réglage "god_pack" > "forced") ;
---   - les autres cartes restent au moins brillantes.
---  À coller dans Supabase > SQL Editor > New query, puis « Run ». Relançable sans danger.
+--   - au moins une dorée ET au moins une full art garanties (réglage "god_pack" > "min") ;
+--   - les autres cartes ont aussi de bonnes chances d'être dorées ou full art ("god_pack" > "variants") ;
+--   - une commune ou une peu commune tirée dans un god pack est toujours dorée ou full art ("forced") ;
+--   - les cartes restantes sont au moins brillantes.
+--  À coller dans Supabase > SQL Editor > New query, puis « Run ».
+--  Relançable, mais remet le réglage "god_pack" à ses valeurs ci-dessous.
 --  (Nécessite la mise à jour n° 12.)
 -- =====================================================================
 
--- Réglage par défaut (ne remplace pas un réglage déjà présent)
-update public.settings set data = jsonb_build_object('god_pack', jsonb_build_object(
-    'variants', jsonb_build_object('doree', 0.04, 'textless', 0.20),
-    'min', 1,
+update public.settings set data = data || jsonb_build_object('god_pack', jsonb_build_object(
+    'variants', jsonb_build_object('doree', 0.10, 'textless', 0.25),
+    'min', jsonb_build_object('doree', 1, 'textless', 1),
     'forced', jsonb_build_array('commune', 'peu-commune'),
-    'doree_share', 0.2)) || data
+    'doree_share', 0.3))
   where id = 1;
 
 -- Version « spéciale » imposée : dorée ou full art (part des dorées : doree_share)
 create or replace function public._god_special(gp jsonb) returns text
 language sql volatile as $$
-  select case when random() < coalesce((gp->>'doree_share')::numeric, 0.2) then 'doree' else 'textless' end;
+  select case when random() < coalesce((gp->>'doree_share')::numeric, 0.3) then 'doree' else 'textless' end;
 $$;
 revoke all on function public._god_special(jsonb) from public, anon, authenticated;
 
@@ -29,7 +28,7 @@ create or replace function public.open_booster(p_token uuid) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare pid uuid := public._player(p_token); s jsonb; sv jsonb; gp jsonb; p record; god boolean; slots jsonb; slot jsonb;
         r text; cid int; v text; taken int[] := '{}'; vars text[] := '{}'; rars text[] := '{}';
-        res jsonb := '[]'; is_new boolean; is_newv boolean; i int; n int; nspec int; k int;
+        res jsonb := '[]'; is_new boolean; is_newv boolean; i int; n int; nspec int; k int; t text; m int;
 begin
   perform public._accrue(pid);
   select data into s from public.settings where id = 1;
@@ -57,14 +56,27 @@ begin
   end loop;
   n := coalesce(array_length(taken, 1), 0);
 
-  -- 2. God pack : garantie d'un minimum de dorées / full art
+  -- 2. God pack : minimum garanti de chaque version spéciale ("min" : {"doree": 1, "textless": 1})
   if god and n > 0 then
-    select count(*) into nspec from unnest(vars) x where x in ('doree', 'textless');
-    while nspec < least(coalesce((gp->>'min')::int, 1), n) loop
-      select i0 into k from generate_subscripts(vars, 1) i0 where vars[i0] not in ('doree', 'textless') order by random() limit 1;
-      exit when k is null;
-      vars[k] := public._god_special(gp);
-      nspec := nspec + 1;
+    for t, m in select key, value::int from jsonb_each_text(
+        case when jsonb_typeof(gp->'min') = 'object' then gp->'min'
+             else jsonb_build_object('textless', coalesce((gp->>'min')::int, 1)) end)
+        order by case key when 'doree' then 0 else 1 end loop
+      select count(*) into nspec from unnest(vars) x where x = t;
+      while nspec < m loop
+        -- on améliore d'abord une carte qui n'est ni dorée ni full art
+        select i0 into k from generate_subscripts(vars, 1) i0 where vars[i0] not in ('doree', 'textless') order by random() limit 1;
+        -- sinon une carte d'une autre version spéciale déjà au-delà de son minimum
+        if k is null then
+          select i0 into k from generate_subscripts(vars, 1) i0
+           where vars[i0] in ('doree', 'textless') and vars[i0] <> t
+             and (select count(*) from unnest(vars) y where y = vars[i0]) > coalesce((gp->'min'->>vars[i0])::int, 0)
+           order by random() limit 1;
+        end if;
+        exit when k is null;
+        vars[k] := t;
+        nspec := nspec + 1;
+      end loop;
     end loop;
   end if;
 
