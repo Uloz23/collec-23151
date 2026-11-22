@@ -155,6 +155,7 @@ td.num { font-variant-numeric: tabular-nums; }
         <label for="g-count" style="flex:0 1 110px">Nombre<input id="g-count" type="number" min="1" max="50" value="1"></label>
         <label for="g-reason">Motif (affiché au joueur)<input id="g-reason" placeholder="Manip' réussie au resto"></label>
       </div>
+      <label class="check" style="display:flex;gap:8px;align-items:center;margin:6px 0"><input type="checkbox" id="g-god"> ✨ God pack garanti</label>
       <div class="row">
         <button class="btn primary" id="g-selected" type="button">Offrir aux joueurs cochés</button>
         <button class="btn" id="g-all" type="button">Offrir à tout le monde</button>
@@ -475,10 +476,12 @@ async function loadPlayers() {
 $("p-refresh").onclick = loadPlayers;
 $("p-all").onchange = e => document.querySelectorAll(".p-sel").forEach(c => c.checked = e.target.checked);
 async function gift(ids) {
-  const n = parseInt($("g-count").value, 10) || 1, reason = $("g-reason").value.trim() || "Booster offert";
-  const { data, error } = await SB.rpc("admin_gift", { p_ids: ids, p_count: n, p_reason: reason });
-  if (error) return say($("g-status"), "Erreur : " + error.message, false);
-  say($("g-status"), `${n} booster${n > 1 ? "s" : ""} offert${n > 1 ? "s" : ""} à ${data} joueur${data > 1 ? "s" : ""}.`);
+  const god = $("g-god").checked, n = parseInt($("g-count").value, 10) || 1;
+  const reason = $("g-reason").value.trim() || (god ? "God pack offert ✨" : "Booster offert");
+  const { data, error } = await SB.rpc(god ? "admin_gift_god" : "admin_gift", { p_ids: ids, p_count: n, p_reason: reason });
+  if (error) return say($("g-status"), "Erreur : " + (/admin_gift_god/.test(error.message) ? "il manque la mise à jour n° 19." : error.message), false);
+  $("g-god").checked = false;
+  say($("g-status"), `${n} ${god ? "god pack" : "booster"}${n > 1 ? "s" : ""} offert${n > 1 ? "s" : ""} à ${data} joueur${data > 1 ? "s" : ""}.`);
   loadPlayers();
 }
 $("g-selected").onclick = () => {

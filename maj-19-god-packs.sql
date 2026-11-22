@@ -4,7 +4,8 @@
 --   - au moins une dorée ET au moins une full art garanties (réglage "god_pack" > "min") ;
 --   - les autres cartes ont aussi de bonnes chances d'être dorées ou full art ("god_pack" > "variants") ;
 --   - une commune ou une peu commune tirée dans un god pack est toujours dorée ou full art ("forced") ;
---   - les cartes restantes sont au moins brillantes.
+--   - les cartes restantes sont au moins brillantes ;
+--   - ceux qui ont le droit d'offrir (et l'admin) peuvent offrir un god pack garanti.
 --  À coller dans Supabase > SQL Editor > New query, puis « Run ».
 --  Relançable, mais remet le réglage "god_pack" à ses valeurs ci-dessous.
 --  (Nécessite la mise à jour n° 12.)
@@ -16,6 +17,9 @@ update public.settings set data = data || jsonb_build_object('god_pack', jsonb_b
     'forced', jsonb_build_array('commune', 'peu-commune'),
     'doree_share', 0.3))
   where id = 1;
+
+-- God packs offerts : nombre de god packs garantis parmi les boosters offerts en attente
+alter table public.players add column if not exists god_gifts int not null default 0;
 
 -- Version « spéciale » imposée : dorée ou full art (part des dorées : doree_share)
 create or replace function public._god_special(gp jsonb) returns text
@@ -34,7 +38,8 @@ begin
   select data into s from public.settings where id = 1;
   select * into p from public.players where id = pid for update;
   if p.stock + p.gifts < 1 then raise exception 'pas_de_booster'; end if;
-  god := random() < (s->>'god_rate')::numeric;
+  -- un god pack offert passe en premier, sinon le hasard
+  god := (p.god_gifts > 0 and p.gifts > 0) or random() < (s->>'god_rate')::numeric;
   slots := case when god then s->'god_slots' else s->'slots' end;
   gp := coalesce(s->'god_pack', '{}'::jsonb);
   -- dans un god pack, les probabilités de dorée / full art sont remplacées par celles de "god_pack"
@@ -93,11 +98,42 @@ begin
 
   -- les boosters offerts partent en premier
   if p.gifts > 0 then
-    update public.players set gifts = gifts - 1, gift_reason = case when gifts - 1 < 1 then null else gift_reason end where id = pid;
+    update public.players set gifts = gifts - 1, god_gifts = least(greatest(god_gifts - 1, 0), gifts - 1),
+      gift_reason = case when gifts - 1 < 1 then null else gift_reason end where id = pid;
   else
     update public.players set stock = stock - 1, tick = case when stock >= (s->>'cap')::int then now() else tick end where id = pid;
   end if;
   return jsonb_build_object('god', god, 'pulls', res, 'state', public._state(pid));
 end $$;
+
+-- Offrir depuis l'appli, avec la case « God pack garanti »
+create or replace function public.gift_as_player(p_token uuid, p_ids uuid[], p_count int, p_reason text, p_god boolean) returns int
+language plpgsql security definer set search_path = public as $$
+declare me uuid := public._player(p_token); n int;
+begin
+  if not exists (select 1 from public.players where id = me and can_gift) then raise exception 'pas_autorise'; end if;
+  if p_count < 1 or p_count > 20 then raise exception 'nombre_invalide'; end if;
+  update public.players set gifts = gifts + p_count, god_gifts = god_gifts + case when p_god then p_count else 0 end,
+      gift_reason = coalesce(nullif(btrim(p_reason), ''), case when p_god then 'God pack offert ✨' else 'Booster offert' end)
+    where id <> me and (p_ids is null or id = any(p_ids));
+  get diagnostics n = row_count; return n;
+end $$;
+
+-- Offrir depuis l'admin, avec la même case
+create or replace function public.admin_gift_god(p_ids uuid[], p_count int, p_reason text) returns int
+language plpgsql security definer set search_path = public as $$
+declare n int;
+begin
+  if not public.is_admin() then raise exception 'reserve_admin'; end if;
+  if p_count < 1 or p_count > 50 then raise exception 'nombre_invalide'; end if;
+  update public.players set gifts = gifts + p_count, god_gifts = god_gifts + p_count,
+      gift_reason = coalesce(nullif(btrim(p_reason), ''), 'God pack offert ✨')
+    where p_ids is null or id = any(p_ids);
+  get diagnostics n = row_count; return n;
+end $$;
+
+grant execute on function public.gift_as_player(uuid, uuid[], int, text, boolean) to anon, authenticated;
+revoke execute on function public.admin_gift_god(uuid[], int, text) from public, anon;
+grant execute on function public.admin_gift_god(uuid[], int, text) to authenticated;
 
 select 'Mise à jour n° 19 installée' as resultat;
