@@ -773,7 +773,10 @@ const ERRORS = {
   trade_: "Il manque la mise à jour n° 8 dans Supabase.",
   player_album: "Il manque la mise à jour n° 2 dans Supabase."
 };
-const errText = e => { const m = String(e && e.message || e); const k = Object.keys(ERRORS).find(k => m.includes(k)); return k ? ERRORS[k] : "Problème de connexion. Vérifie ton réseau et réessaie."; };
+const errText = e => { const m = String(e && e.message || e); const k = Object.keys(ERRORS).find(k => m.includes(k)); if (k) return ERRORS[k];
+  // erreur venue du serveur (pas du réseau) : on montre son texte pour pouvoir la diagnostiquer
+  if (e && (e.code || e.details || e.hint) && !/fetch|network|Failed to/i.test(m)) return "Erreur du serveur : " + m.slice(0, 160);
+  return "Problème de connexion. Vérifie ton réseau et réessaie."; };
 async function rpc(name, args) {
   const { data, error } = await SB.rpc(name, args);
   if (error) {
