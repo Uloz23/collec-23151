@@ -1169,7 +1169,7 @@ function tearPack(dir = 1) {
     const pk0 = $("ov-stage").querySelector(".pack");
     pk0.style.setProperty("--cut", "0%");
     pk0.classList.add("spin", special === "gold" ? "sp-gold" : "sp-tl");
-    if (session.god) setHint("Le god pack s'illumine…", "big gold"); else setHint(special === "gold" ? "Ce booster brille d'une drôle de lueur dorée…" : "Ce booster scintille de toutes les couleurs…", special === "gold" ? "big gold" : "big");
+    setHint(!session.god && special === "gold" ? "Ce booster brille d'une drôle de lueur dorée…" : "", "big gold");
     buzz([40, 60, 40, 60, 40, 60, 120]);
     sfx.spin && sfx.spin(special);
     setTimeout(() => { if (!session || session.phase !== "spinning") return; pk0.classList.remove("spin"); session.phase = "pack"; tearPack(dir); }, 1500);
@@ -1194,7 +1194,7 @@ function tearPack(dir = 1) {
     const fl = document.createElement("div"); fl.className = "godflash"; $("opening").appendChild(fl); setTimeout(() => fl.remove(), 1800);
     $("ov-count").textContent = "✨ God pack ✨";
     showMsg(false);
-    setHint("God pack ! Au moins une dorée et une full art t'attendent", "big gold");
+    setHint("");
   }
   setTimeout(() => { if (session) { session.phase = "cards"; dealNext(); } }, session.god ? 1700 : 900);
 }
