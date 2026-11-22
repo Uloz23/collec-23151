@@ -9,7 +9,6 @@
 --     d'un joueur sera un god pack, sans lui ajouter de booster : avec un message, ou en toute discrétion.
 --  À coller dans Supabase > SQL Editor > New query, puis « Run ».
 --  Relançable, mais remet le réglage "god_pack" à ses valeurs ci-dessous.
---  (Nécessite la mise à jour n° 12.)
 -- =====================================================================
 
 update public.settings set data = data || jsonb_build_object('god_pack', jsonb_build_object(
@@ -25,6 +24,25 @@ alter table public.players add column if not exists god_next int not null defaul
 alter table public.players add column if not exists god_msg text;
 drop function if exists public.gift_as_player(uuid, uuid[], int, text, boolean);
 drop function if exists public.admin_gift_god(uuid[], int, text);
+
+-- Tirage de la version d'une carte, avec le multiplicateur de sa rareté
+create or replace function public._variant(s jsonb, r text) returns text
+language plpgsql volatile as $$
+declare m numeric := coalesce((s->'variant_boost'->>r)::numeric, 1);
+        d numeric := (s->'variants'->>'doree')::numeric * m;
+        t numeric := (s->'variants'->>'textless')::numeric * m;
+        b numeric := (s->'variants'->>'brillante')::numeric * m;
+        x numeric := random();
+begin
+  if d + t + b > 0.95 then  -- garde-fou : au moins 5 % de normales
+    m := 0.95 / (d + t + b); d := d * m; t := t * m; b := b * m;
+  end if;
+  if x < d then return 'doree'; end if;
+  if x < d + t then return 'textless'; end if;
+  if x < d + t + b then return 'brillante'; end if;
+  return 'normale';
+end $$;
+revoke all on function public._variant(jsonb, text) from public, anon, authenticated;
 
 -- Version « spéciale » imposée : dorée ou full art (part des dorées : doree_share)
 create or replace function public._god_special(gp jsonb) returns text
