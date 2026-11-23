@@ -140,7 +140,7 @@ button { font: inherit; color: inherit; }
 .legend .rarity { width: 40px; }
 
 </style>
-<link rel="stylesheet" href="carte.css?v=4">
+<link rel="stylesheet" href="carte.css?v=5">
 <style>
 /* ---------- Booster (paquet) ---------- */
 .pack { container-type: inline-size; position: relative; width: min(60vw, 250px); aspect-ratio: 63 / 100; cursor: pointer; border: 0; padding: 0; background: none; }
@@ -199,13 +199,13 @@ button { font: inherit; color: inherit; }
 .ov-hint.gold { color: #ffe9a8; text-shadow: 0 0 12px rgba(255,200,80,.8); }
 /* God pack : visible du début à la fin de l'ouverture */
 #opening.godmode { background: radial-gradient(ellipse 90% 60% at 50% 45%, #3d2c0b, #120c04 60%, #0b0707 85%); }
-#opening.godmode::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; box-shadow: inset 0 0 0 3px rgba(255,214,110,.9), inset 0 0 70px rgba(255,190,60,.45); animation: godframe 2.2s ease-in-out infinite alternate; }
+#opening.godmode::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; box-shadow: inset 0 0 0 4px rgba(255,236,170,1), inset 0 0 90px rgba(255,190,60,.6); will-change: opacity; animation: godframe 2.2s ease-in-out infinite alternate; }
 #opening.godmode::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: .7;
   background-image: radial-gradient(2px 2px at 12% 80%, #fff3c4, transparent), radial-gradient(1.5px 1.5px at 30% 30%, #ffe9a8, transparent), radial-gradient(2px 2px at 55% 70%, #fff, transparent), radial-gradient(1.5px 1.5px at 75% 20%, #ffd86b, transparent), radial-gradient(2px 2px at 90% 60%, #fff3c4, transparent), radial-gradient(1.5px 1.5px at 45% 95%, #ffe9a8, transparent);
-  background-size: 100% 100%; animation: godrise 6s linear infinite; }
+  inset: 0 0 auto 0; height: 200vh; background-size: 100% 100vh; will-change: transform; animation: godrise 6s linear infinite; }
 #opening.godmode > * { position: relative; z-index: 1; }
-@keyframes godframe { from { box-shadow: inset 0 0 0 2px rgba(255,214,110,.6), inset 0 0 40px rgba(255,190,60,.3); } to { box-shadow: inset 0 0 0 4px rgba(255,236,170,1), inset 0 0 90px rgba(255,190,60,.6); } }
-@keyframes godrise { from { background-position: 0 0; } to { background-position: 0 -100vh; } }
+@keyframes godframe { from { opacity: .45; } to { opacity: 1; } }
+@keyframes godrise { from { transform: translateY(0); } to { transform: translateY(-100vh); } }
 #opening.godmode .ov-count { color: #ffe9a8; text-shadow: 0 0 10px rgba(255,200,80,.9); font-weight: 700; }
 .pack.god .pack-body, .pack.god .pack-top { background: linear-gradient(135deg, #4a3205, #d9ad45 22%, #fff3c4 38%, #b8860b 52%, #6c4f9d 74%, #e8c35a 92%); }
 .pack.god .pack-title, .pack.god .pack-sub { color: #2a1a02; text-shadow: 0 0 2cqw rgba(255,243,196,.9); }
@@ -301,7 +301,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
   padding: 8px max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
-  background: rgba(18,13,12,.94); border-top: 1px solid var(--line); backdrop-filter: blur(8px);
+  background: rgba(18,13,12,.94); border-top: 1px solid var(--line);
 }
 .tab { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 2px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; font-family: var(--f-label); font-weight: 600; font-size: clamp(12px, 3.9vw, 15px); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
 .tab[aria-current="page"] { background: rgba(212,178,106,.14); color: var(--gold-soft); }
@@ -669,7 +669,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="config.js?v=3"></script>
-<script src="carte.js?v=5"></script>
+<script src="carte.js?v=6"></script>
 <script>
 (() => {
 /* ================= Données : tout vient de la base Supabase ================= */

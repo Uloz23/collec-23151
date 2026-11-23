@@ -58,6 +58,8 @@ function sparklesHTML() {
 // « // » dans le nom force le retour à la ligne à cet endroit
 const nameSize = n => { const parts = n.split("//"); if (parts.length > 1) { const m = Math.max(...parts.map(x => x.trim().length)); return m > 26 ? " long2 xl" : " long2"; } return n.length > 40 ? " long2 xl" : n.length > 22 ? " long2" : n.length > 15 ? " long" : ""; };
 const nameHTML = n => n.replace(/[\u00a0\u202f]/g, " ").split("//").map(x => esc(x.trim())).join("<br>");
+// Les animations des cartes hors de l'écran sont mises en pause (album long, grand écran)
+const pauseIO = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle("pause", !e.isIntersecting)), { rootMargin: "150px" }) : null;
 function cardEl(card, variant = "normale") {
   const el = document.createElement("div");
   // Les dorées sont aussi en pleine carte (mise en page textless + cadre or)
@@ -71,6 +73,7 @@ function cardEl(card, variant = "normale") {
     ${textboxHTML(card)}
     <div class="numbering"><span>${card.fams ? esc(card.fams) : "23-151"}</span><span>${pad(card.num || card.id)} / ${pad(CARDS.length)}</span></div>
   </div></div><div class="foil" aria-hidden="true"></div>${variant === "doree" ? sparklesHTML() : ""}`;
+  if (pauseIO && variant !== "normale") pauseIO.observe(el);
   return el;
 }
 function backEl() {

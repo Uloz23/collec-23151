@@ -67,12 +67,12 @@
 /* Dorées : scintillements (petites étoiles qui s'allument au hasard) et reflet qui balaie le cadre or */
 .sparkles { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; border-radius: inherit; }
 .sparkles i { position: absolute; width: 14cqw; aspect-ratio: 1; margin: -7cqw 0 0 -7cqw; opacity: 0;
-  filter: drop-shadow(0 0 1cqw #fff) drop-shadow(0 0 2.2cqw rgba(255,190,60,.95)); animation: twinkle var(--d, 2.4s) ease-in-out var(--w, 0s) infinite; }
+  filter: drop-shadow(0 0 1cqw #fff) drop-shadow(0 0 2.2cqw rgba(255,190,60,.95)); animation: twinkle var(--d, 2.4s) ease-in-out var(--w, 0s) infinite; will-change: transform, opacity; }
 .sparkles i::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, #fff 0 30%, #fff3c4 60%, #ffd56a);
   clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%); }
 .sparkles i.s { width: 9cqw; margin: -4.5cqw 0 0 -4.5cqw; }
 @keyframes twinkle { 0%, 62%, 100% { opacity: 0; transform: scale(.2) rotate(0deg); } 76% { opacity: 1; transform: scale(1) rotate(25deg); } 88% { opacity: .2; transform: scale(.5) rotate(45deg); } }
-.v-doree .card-in::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 60%; pointer-events: none; background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,.95) 50%, transparent 80%); transform: translateX(-120%); animation: glintx 3.4s ease-in-out infinite; }
+.v-doree .card-in::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 60%; pointer-events: none; background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,.95) 50%, transparent 80%); transform: translateX(-120%); will-change: transform; animation: glintx 3.4s ease-in-out infinite; }
 /* Reflet déplacé par transformation (plus léger pour les téléphones que l'animation d'un très grand fond) */
 @keyframes glintx { 0% { transform: translateX(-120%); } 60%, 100% { transform: translateX(220%); } }
 @media (prefers-reduced-motion: reduce) { .sparkles { display: none; } .v-doree .card-in::before { animation: none; } }
@@ -84,16 +84,25 @@
   background-size: 260% 260%; background-position: var(--px, 50%) 50%;
 }
 .r-mythique .foil { opacity: .28; }
-.v-brillante .foil, .v-doree .foil { opacity: .5; animation: sheen 4.5s ease-in-out infinite alternate; }
+.v-brillante .foil, .v-doree .foil { opacity: .5; animation: sheenx 4.5s ease-in-out infinite alternate; }
+/* Les reflets bougent par transformation (calculée par la carte graphique) et non en repeignant le fond :
+   bien plus léger quand l'album affiche beaucoup de cartes sur un grand écran */
+.v-brillante .foil, .v-doree .foil { inset: 0 auto 0 0; width: 260%; background-size: 100% 100%; will-change: transform;
+  transform: translateX(calc(var(--px, 50%) * -.615)); }
+@keyframes sheenx { from { transform: translateX(0); } to { transform: translateX(-61.5%); } }
 /* Brillante : bordure irisée qui ondule, bien visible même quand on fait défiler l'album */
 .v-brillante { box-shadow: 0 10px 24px -10px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.5), -6px 0 18px -4px rgba(255,90,190,.65), 6px 0 18px -4px rgba(70,190,255,.65); }
 /* Bordure irisée : arc-en-ciel saturé qui défile + reflet blanc qui balaie la bordure */
-.v-brillante .card-in { background: linear-gradient(115deg, #ff4fa3, #ffb23f, #f4f04a, #3ef08f, #3fc8ff, #6f7bff, #c46bff, #ff4fa3, #ffb23f, #f4f04a, #3ef08f, #3fc8ff, #6f7bff, #c46bff, #ff4fa3); background-size: 200% 200%; animation: iris 3.2s linear infinite; }
-.v-brillante .card-in::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 60%; pointer-events: none; background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,.9) 50%, transparent 80%); transform: translateX(-120%); animation: glintx 2.6s ease-in-out infinite; }
+.v-brillante .card-in { background: linear-gradient(115deg, #ff4fa3, #ffb23f, #f4f04a, #3ef08f, #3fc8ff, #6f7bff, #c46bff, #ff4fa3); isolation: isolate; overflow: hidden; }
+.v-brillante .card-in::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% + 70cqw); z-index: -1; pointer-events: none; will-change: transform;
+  background: repeating-linear-gradient(115deg, #ff4fa3 0, #ffb23f 8.57cqw, #f4f04a 17.14cqw, #3ef08f 25.71cqw, #3fc8ff 34.29cqw, #6f7bff 42.86cqw, #c46bff 51.43cqw, #ff4fa3 60cqw);
+  animation: irisx 2.2s linear infinite; }
+@keyframes irisx { from { transform: translateX(0); } to { transform: translateX(-66.2cqw); } }
+.v-brillante .card-in::before { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 60%; pointer-events: none; will-change: transform; background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,.9) 50%, transparent 80%); transform: translateX(-120%); animation: glintx 2.6s ease-in-out infinite; }
 .v-brillante .frame { border-color: rgba(255,255,255,.95); }
 @keyframes iris { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
 @keyframes glint { 0% { background-position: 130% 0; } 60%, 100% { background-position: -40% 0; } }
-@media (prefers-reduced-motion: reduce) { .v-brillante .card-in, .v-brillante .card-in::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .v-brillante .card-in::after, .v-brillante .card-in::before, .v-brillante .foil, .v-doree .foil { animation: none; } }
 @keyframes sheen { from { background-position: 0% 50%; } to { background-position: 100% 50%; } }
 
 /* ---------- Dos de carte ---------- */
@@ -105,3 +114,6 @@
 .cardback-am { position: absolute; inset: 9cqw 12cqw; background: url(assets/am.png) center / contain no-repeat; opacity: .55; filter: brightness(0); }
 .cardback-logo { position: relative; z-index: 1; width: 52cqw !important; filter: drop-shadow(0 0 2.5cqw rgba(40,8,16,.95)) drop-shadow(0 0 1cqw rgba(0,0,0,.7)) !important; }
 
+
+/* Carte hors de l'écran : animations en pause */
+.card.pause *, .card.pause *::before, .card.pause *::after { animation-play-state: paused !important; }
