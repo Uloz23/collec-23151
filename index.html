@@ -1072,6 +1072,9 @@ let opening = false;
 async function startOpening() {
   if (total() < 1 || opening || session) return;
   opening = true; renderReserve();
+  // Le son est préparé dès le clic : sur PC, démarrer l'audio peut figer la page un instant,
+  // ce qui faisait sauter l'animation du booster qui se déchire
+  ac();
   let res;
   try { res = await rpc("open_booster", { p_token: TOKEN }); }
   catch (e) { opening = false; toast(errText(e)); refreshState(); return; }
@@ -1186,7 +1189,7 @@ function tearPack(dir = 1) {
   pk.style.setProperty("--cut", "100%");
   pk.classList.add("torn", dir < 0 ? "to-left" : "to-right");
   buzz(session.god ? [80, 50, 80, 50, 200] : 30);
-  sfx.tear();
+  requestAnimationFrame(() => setTimeout(() => sfx.tear(), 0));
   if (!session.god) {
     const best = bestRarity(session.pulls), g = GLOW[best], fl = document.createElement("div");
     fl.className = "rflash" + (best === "mythique" ? " myth" : "");
