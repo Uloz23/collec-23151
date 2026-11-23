@@ -688,7 +688,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
     if (t - t0 >= 1000) { fpsEl.textContent = `${Math.round(n * 1000 / (t - t0))} img/s · pire écart ${Math.round(worst)} ms`; n = 0; t0 = t; worst = 0; }
     requestAnimationFrame(tick); };
   requestAnimationFrame(tick);
-  const add = txt => { const d = document.createElement("div"); d.textContent = new Date().toLocaleTimeString() + " " + txt; log.prepend(d); while (log.childNodes.length > 15) log.lastChild.remove(); };
+  const add = window.__perfLog = txt => { const d = document.createElement("div"); d.textContent = new Date().toLocaleTimeString() + " " + txt; log.prepend(d); while (log.childNodes.length > 15) log.lastChild.remove(); };
   try {
     new PerformanceObserver(l => l.getEntries().forEach(e => {
       if (e.duration < 120) return;
@@ -1092,19 +1092,24 @@ const bestRarity = pulls => pulls.reduce((b, p) => RANK[p.card.rarity] > RANK[b]
 
 /* ================= Ouverture d'un booster ================= */
 let session = null;
-const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+// Mesure (avec ?perf dans l'adresse) : signale les étapes de l'ouverture qui prennent du temps
+const perfMark = (what, t) => { const d = performance.now() - t; if (d > 30 && window.__perfLog) window.__perfLog(`${what} : ${Math.round(d)} ms`); };
+// Vibrations seulement sur les écrans tactiles (sur PC, certains navigateurs bloquent la page en essayant de vibrer)
+const CAN_BUZZ = !!navigator.vibrate && matchMedia("(pointer: coarse)").matches;
+const buzz = p => { if (!CAN_BUZZ) return; const t = performance.now(); try { navigator.vibrate(p); } catch (e) {} perfMark("vibration", t); };
+
 
 let opening = false;
 async function startOpening() {
   if (total() < 1 || opening || session) return;
   opening = true; renderReserve();
-  // Le son est préparé dès le clic : sur PC, démarrer l'audio peut figer la page un instant,
-  // ce qui faisait sauter l'animation du booster qui se déchire
-  ac();
-  let res;
+  // Le son est préparé dès le clic (sur PC, démarrer l'audio peut figer la page un instant)
+  let res; let t = performance.now();
+  ac(); perfMark("démarrage du son", t);
+  t = performance.now();
   try { res = await rpc("open_booster", { p_token: TOKEN }); }
   catch (e) { opening = false; toast(errText(e)); refreshState(); return; }
-  opening = false;
+  opening = false; perfMark("réponse du serveur (attente, pas un blocage)", t); t = performance.now();
   const pulls = res.pulls.map(p => ({ card: CARDS.find(c => c.id === p.card_id), variant: p.variant, newCard: p.new_card, newVariant: p.new_variant })).filter(p => p.card);
   pulls.sort((a, b) => score(a) - score(b));
   applyState(res.state);
@@ -1116,6 +1121,7 @@ async function startOpening() {
   $("ov-skip").hidden = false;
   showPack();
   $("ov-stage").focus();
+  perfMark("affichage du booster", t);
 }
 function showMsg(on) { const m = $("ov-msg"); m.hidden = !on || !session || !session.msg; if (!m.hidden) m.textContent = "✨ " + session.msg; }
 function showPack() {
@@ -1203,10 +1209,12 @@ function tearPack(dir = 1) {
     session.spun = true; session.phase = "spinning";
     const pk0 = $("ov-stage").querySelector(".pack");
     pk0.style.setProperty("--cut", "0%");
+    const t = performance.now();
     pk0.classList.add("spin", special === "gold" ? "sp-gold" : "sp-tl");
     setHint(!session.god && special === "gold" ? "Ce booster brille d'une drôle de lueur dorée…" : "", "big gold");
     buzz([40, 60, 40, 60, 40, 60, 120]);
-    sfx.spin && sfx.spin(special);
+    const t2 = performance.now(); sfx.spin && sfx.spin(special); perfMark("son du booster spécial", t2);
+    perfMark("début du tourbillon", t);
     setTimeout(() => { if (!session || session.phase !== "spinning") return; pk0.classList.remove("spin"); session.phase = "pack"; tearPack(dir); }, 1500);
     return;
   }
