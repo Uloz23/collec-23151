@@ -333,6 +333,9 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .login-note { margin: 4px 0 0; font-size: 14px; color: var(--muted); text-align: center; }
 .board { display: grid; gap: 10px; }
 /* ---------- Jeux ---------- */
+.games-teaser { margin: 0; min-height: 50vh; display: grid; place-items: center; font-family: var(--f-gadz); font-size: clamp(44px, 13vw, 88px); color: var(--gold-soft); text-shadow: 0 4px 20px rgba(0,0,0,.6); }
+.games-full { display: grid; gap: 20px; }
+.games-full[hidden] { display: none; }
 .games-intro { margin: -8px 0 0; color: var(--muted); font-family: var(--f-label); font-size: 14px; letter-spacing: .03em; }
 .games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; }
 .game-tile { position: relative; display: grid; grid-template-rows: auto 1fr; overflow: hidden; padding: 0; text-align: left; border-radius: 16px; border: 1px solid var(--line); background: rgba(241,223,174,.04); color: inherit; font: inherit; cursor: pointer; }
@@ -594,10 +597,13 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
       <ul class="prop-list" id="prop-list"></ul>
     </section>
   </section>
-  <section class="page page-jeux" id="page-jeux" aria-labelledby="jeux-title" hidden>
-    <h2 class="page-title" id="jeux-title">Jeux</h2>
-    <p class="games-intro" id="games-intro">Des jeux autour des trad's et de la collec' arrivent bientôt.</p>
-    <div class="games-grid" id="games-grid"></div>
+  <section class="page page-jeux" id="page-jeux" aria-label="À venir" hidden>
+    <p class="games-teaser" id="games-teaser">Tu verras</p>
+    <div class="games-full" id="games-full" hidden>
+      <h2 class="page-title" id="jeux-title">Jeux</h2>
+      <p class="games-intro" id="games-intro"></p>
+      <div class="games-grid" id="games-grid"></div>
+    </div>
   </section>
 </div>
 
@@ -605,7 +611,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
   <button type="button" class="tab" id="tab-boosters" data-page="boosters" aria-current="page"><span class="tab-ico" aria-hidden="true">✦</span>Boosters<span class="tab-badge" id="tab-badge" hidden></span></button>
   <button type="button" class="tab" id="tab-collec" data-page="collec"><span class="tab-ico" aria-hidden="true">▦</span>Ma collec'<span class="tab-sub" id="tab-sub"></span></button>
   <button type="button" class="tab" id="tab-fams" data-page="fams"><span class="tab-ico" aria-hidden="true">♜</span>La fam's<span class="tab-sub" id="tab-fams-sub"></span><span class="tab-badge" id="tab-fams-badge" hidden></span></button>
-  <button type="button" class="tab" id="tab-jeux" data-page="jeux"><span class="tab-ico" aria-hidden="true">♫</span>Jeux<span class="tab-dot" id="tab-jeux-dot" hidden></span></button>
+  <button type="button" class="tab" id="tab-jeux" data-page="jeux"><span class="tab-ico" id="tab-jeux-ico" aria-hidden="true">?</span><span id="tab-jeux-lbl">À venir</span><span class="tab-dot" id="tab-jeux-dot" hidden></span></button>
 </nav>
 
 <div class="game-ov" id="game-ov" hidden role="dialog" aria-modal="true" aria-labelledby="game-title">
@@ -1971,10 +1977,19 @@ async function loadGames(force) {
     .finally(() => { gamesLoading = null; renderGamesDot(); });
   await gamesLoading; return GAMES;
 }
-function renderGamesDot() { const v = seenGames(); $("tab-jeux-dot").hidden = !(GAMES || []).some(g => playable(g) && !v.includes(g.id)); }
+// Tant qu'aucun jeu n'est jouable, l'onglet s'appelle « À venir » et n'affiche que « Tu verras » (sauf pour les comptes test)
+const gamesTeaser = () => !state.isTest && !(GAMES || []).some(playable);
+function renderGamesDot() {
+  const v = seenGames(); $("tab-jeux-dot").hidden = !(GAMES || []).some(g => playable(g) && !v.includes(g.id));
+  $("tab-jeux-lbl").textContent = gamesTeaser() ? "À venir" : "Jeux";
+  $("tab-jeux-ico").textContent = gamesTeaser() ? "?" : "♫";
+}
 async function renderGames() {
   const list = await loadGames(true), v = seenGames();
-  const any = list.some(playable);
+  const any = list.some(playable), teaser = gamesTeaser();
+  $("games-teaser").hidden = !teaser; $("games-full").hidden = teaser;
+  $("page-jeux").setAttribute("aria-label", teaser ? "À venir" : "Jeux");
+  if (teaser) return;
   $("games-intro").textContent = any ? "Choisis un jeu. Tes records comptent pour la fam's !" : "Des jeux autour des trad's et de la collec' arrivent bientôt.";
   $("games-grid").innerHTML = list.map(g => {
     const img = g.image ? `style="background-image:url('${esc(media(g.image))}')"` : "";
