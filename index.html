@@ -305,11 +305,11 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .head { align-items: center; }
 .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px;
   padding: 8px max(12px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
   background: rgba(18,13,12,.94); border-top: 1px solid var(--line);
 }
-.tab { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 2px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; font-family: var(--f-label); font-weight: 600; font-size: clamp(12px, 3.9vw, 15px); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.tab { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 2px; border: 0; border-radius: 12px; background: transparent; cursor: pointer; font-family: var(--f-label); font-weight: 600; font-size: clamp(11px, 3.3vw, 15px); letter-spacing: .03em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
 .tab[aria-current="page"] { background: rgba(212,178,106,.14); color: var(--gold-soft); }
 .tab-ico { font-size: 20px; line-height: 1; }
 .tab-badge { position: absolute; top: 4px; left: calc(50% + 22px); min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; display: grid; place-items: center; background: var(--fams); color: #fff; font-size: 13px; letter-spacing: 0; }
@@ -332,6 +332,34 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .login-err { margin: 4px 0 0; min-height: 20px; color: #ff9b8f; font-size: 15px; }
 .login-note { margin: 4px 0 0; font-size: 14px; color: var(--muted); text-align: center; }
 .board { display: grid; gap: 10px; }
+/* ---------- Jeux ---------- */
+.games-intro { margin: -8px 0 0; color: var(--muted); font-family: var(--f-label); font-size: 14px; letter-spacing: .03em; }
+.games-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; }
+.game-tile { position: relative; display: grid; grid-template-rows: auto 1fr; overflow: hidden; padding: 0; text-align: left; border-radius: 16px; border: 1px solid var(--line); background: rgba(241,223,174,.04); color: inherit; font: inherit; cursor: pointer; }
+.game-tile:hover, .game-tile:focus-visible { border-color: var(--gold); outline: none; }
+.game-tile[aria-disabled="true"] { cursor: default; }
+.game-tile[aria-disabled="true"]:hover { border-color: var(--line); }
+.game-img { aspect-ratio: 5 / 2; background: radial-gradient(ellipse at 50% 30%, rgba(108,96,157,.5), transparent 70%), linear-gradient(135deg, #2a1418, #120c0b); background-size: cover; background-position: center; display: grid; place-items: center; font-size: 52px; }
+.game-tile[aria-disabled="true"] .game-img { filter: grayscale(.6) brightness(.7); }
+.game-body { display: grid; gap: 4px; padding: 12px 14px 14px; }
+.game-name { font-family: var(--f-gadz); font-size: 22px; color: var(--gold-soft); }
+.game-desc { font-size: 15px; color: var(--muted); line-height: 1.35; }
+.game-badge { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 999px; font-family: var(--f-label); font-weight: 700; font-size: 12px; letter-spacing: .1em; text-transform: uppercase; background: rgba(18,13,12,.85); color: var(--gold-soft); border: 1px solid var(--line); }
+.game-badge.new { background: var(--fams); color: #fff; border-color: transparent; }
+.game-badge.test { background: #3b6; color: #08150b; border-color: transparent; }
+.tab-dot { position: absolute; top: 6px; left: calc(50% + 14px); width: 10px; height: 10px; border-radius: 50%; background: var(--fams); }
+.records-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.records-list li { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; padding: 9px 14px; border-radius: 10px; background: rgba(241,223,174,.04); border: 1px solid rgba(212,178,106,.12); }
+.records-list .rt { font-family: var(--f-label); font-size: 14px; color: var(--muted); letter-spacing: .03em; }
+.records-list .rp { font-family: var(--f-gadz); font-size: 18px; color: var(--gold-soft); }
+.records-list .rs { grid-row: span 2; align-self: center; font-family: var(--f-label); font-weight: 700; font-size: 17px; color: var(--gold); font-variant-numeric: tabular-nums; }
+/* Un jeu ouvert : plein écran par-dessus l'appli */
+.game-ov { position: fixed; inset: 0; z-index: 55; display: flex; flex-direction: column; background: #0b0707; }
+.game-ov[hidden] { display: none; }
+.game-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: max(8px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) 8px max(12px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); }
+.game-title { font-family: var(--f-label); font-weight: 600; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.game-root { position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.game-msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px; text-align: center; color: var(--muted); font-family: var(--f-label); }
 .board-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; counter-reset: rk; }
 .board-list li { counter-increment: rk; display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; padding: 9px 14px; border-radius: 10px; background: rgba(241,223,174,.04); border: 1px solid rgba(212,178,106,.12); font-variant-numeric: tabular-nums; }
 .board-list li::before { content: counter(rk); font-family: var(--f-label); font-weight: 700; font-size: 17px; color: var(--gold); }
@@ -552,6 +580,10 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
       <p class="board-hint">Touche un pseudo pour voir son album et lui proposer un échange</p>
       <ol class="board-list" id="board"></ol>
     </section>
+    <section class="board" id="records" hidden>
+      <h2 class="page-title">Records des jeux</h2>
+      <ul class="records-list" id="records-list"></ul>
+    </section>
     <section class="props" aria-labelledby="seek-title">
       <h2 class="page-title" id="seek-title">Chercher une version</h2>
       <button class="btn-ghost" id="seek-open" type="button">🔍 Qui a la version qui me manque ?</button>
@@ -562,13 +594,24 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
       <ul class="prop-list" id="prop-list"></ul>
     </section>
   </section>
+  <section class="page page-jeux" id="page-jeux" aria-labelledby="jeux-title" hidden>
+    <h2 class="page-title" id="jeux-title">Jeux</h2>
+    <p class="games-intro" id="games-intro">Des jeux autour des trad's et de la collec' arrivent bientôt.</p>
+    <div class="games-grid" id="games-grid"></div>
+  </section>
 </div>
 
 <nav class="tabbar" aria-label="Pages">
   <button type="button" class="tab" id="tab-boosters" data-page="boosters" aria-current="page"><span class="tab-ico" aria-hidden="true">✦</span>Boosters<span class="tab-badge" id="tab-badge" hidden></span></button>
   <button type="button" class="tab" id="tab-collec" data-page="collec"><span class="tab-ico" aria-hidden="true">▦</span>Ma collec'<span class="tab-sub" id="tab-sub"></span></button>
   <button type="button" class="tab" id="tab-fams" data-page="fams"><span class="tab-ico" aria-hidden="true">♜</span>La fam's<span class="tab-sub" id="tab-fams-sub"></span><span class="tab-badge" id="tab-fams-badge" hidden></span></button>
+  <button type="button" class="tab" id="tab-jeux" data-page="jeux"><span class="tab-ico" aria-hidden="true">♫</span>Jeux<span class="tab-dot" id="tab-jeux-dot" hidden></span></button>
 </nav>
+
+<div class="game-ov" id="game-ov" hidden role="dialog" aria-modal="true" aria-labelledby="game-title">
+  <div class="game-top"><span class="game-title" id="game-title"></span><button class="btn-ghost" id="game-quit" type="button">Quitter</button></div>
+  <div class="game-root" id="game-root"></div>
+</div>
 
 <div class="overlay" id="opening" hidden role="dialog" aria-modal="true" aria-label="Ouverture du booster">
   <div class="ov-top"><span class="ov-count" id="ov-count"></span><button class="btn-ghost" id="ov-skip" type="button">Tout révéler</button></div>
@@ -954,14 +997,15 @@ function renderAll() { renderInstall(); renderFreeGift(); if (TOKEN && $("fg-who
 
 /* ================= Navigation entre les deux pages ================= */
 function showPage(name) {
-  if (name !== "collec" && name !== "fams") name = "boosters";
-  ["boosters", "collec", "fams"].forEach(n => { $("page-" + n).hidden = n !== name; });
+  if (!["collec", "fams", "jeux"].includes(name)) name = "boosters";
+  ["boosters", "collec", "fams", "jeux"].forEach(n => { $("page-" + n).hidden = n !== name; });
   // L'album d'un autre joueur s'affiche dans la page collection, mais il appartient à l'onglet « La fam's »
   const tab = name === "collec" && peek ? "fams" : name;
-  ["boosters", "collec", "fams"].forEach(n => { const t = $("tab-" + n); if (n === tab) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
+  ["boosters", "collec", "fams", "jeux"].forEach(n => { const t = $("tab-" + n); if (n === tab) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
   try { if (location.hash !== "#" + name) history.replaceState(null, "", "#" + name); } catch (e) {}
   window.scrollTo(0, 0);
-  if (name === "fams") { renderBoard(); refreshTrades(); loadMyProps(); }
+  if (name === "fams") { renderBoard(); refreshTrades(); loadMyProps(); renderRecords(); }
+  if (name === "jeux") renderGames();
 }
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => showPage(t.dataset.page)));
 window.addEventListener("hashchange", () => showPage(location.hash.slice(1)));
@@ -1458,7 +1502,7 @@ async function renderBoard() {
   } catch (e) { $("board").innerHTML = `<li><span class="bs">Classement indisponible pour l'instant.</span></li>`; }
 }
 // Les clics sur les onglets passent avant showPage (écouteurs ajoutés plus haut) : on referme l'album de l'autre d'abord
-["tab-collec", "tab-boosters", "tab-fams"].forEach(id => $(id).addEventListener("click", () => { if (peek) { endPeek(); showPage($(id).dataset.page); } }, true));
+["tab-collec", "tab-boosters", "tab-fams", "tab-jeux"].forEach(id => $(id).addEventListener("click", () => { if (peek) { endPeek(); showPage($(id).dataset.page); } }, true));
 function endPeek() { peek = null; $("peek-bar").hidden = true; renderProgress(); renderFilters(); renderAlbum(); }
 async function startPeek(pseudo) {
   if (pseudo === state.pseudo) { if (peek) endPeek(); showPage("collec"); return; }
@@ -1904,6 +1948,112 @@ $("install-go").addEventListener("click", async () => { if (!installEvt) return;
 $("install-x").addEventListener("click", () => { try { localStorage.setItem("collec23151-install-ok", "1"); } catch (e) {} renderInstall(); });
 if ("serviceWorker" in navigator && !/[?&]apercu/.test(location.search)) navigator.serviceWorker.register("sw.js").catch(() => {});
 
+/* ================= Jeux =================
+   Chaque jeu vit dans son dossier jeux/<id>/jeu.js, chargé seulement quand on l'ouvre.
+   Il s'enregistre avec Collec.jeu("<id>", { start(api, root) {…}, stop() {…} })
+   et passe par « api » pour tout ce qui touche à l'appli (joueur, cartes, son, scores). */
+let GAMES = null, gamesLoading = null, curGame = null;
+const GAME_DEFS = {};
+const GAMES_TEASER = [
+  { id: "rythme", name: "Le monôme", description: "Suis le rythme des chants de chaque tabagn's.", status: "soon", icon: "♫" },
+  { id: "duel", name: "Le duel", description: "Affronte la fam's avec tes cartes.", status: "soon", icon: "⚔" }
+];
+const GAME_ICON = { rythme: "♫", duel: "⚔", demo: "✦" };
+const seenGames = () => { try { return JSON.parse(localStorage.getItem("collec23151-jeux-vus") || "[]"); } catch (e) { return []; } };
+const markSeen = id => { try { const v = seenGames(); if (!v.includes(id)) { v.push(id); localStorage.setItem("collec23151-jeux-vus", JSON.stringify(v)); } } catch (e) {} };
+const playable = g => g.status === "on" || g.status === "test";
+async function loadGames(force) {
+  if (!TOKEN) return GAMES_TEASER;
+  if (GAMES && !force) return GAMES;
+  if (!gamesLoading) gamesLoading = rpc("games_list", { p_token: TOKEN })
+    .then(r => { GAMES = Array.isArray(r) && r.length ? r : GAMES_TEASER; })
+    .catch(() => { GAMES = GAMES_TEASER; })
+    .finally(() => { gamesLoading = null; renderGamesDot(); });
+  await gamesLoading; return GAMES;
+}
+function renderGamesDot() { const v = seenGames(); $("tab-jeux-dot").hidden = !(GAMES || []).some(g => playable(g) && !v.includes(g.id)); }
+async function renderGames() {
+  const list = await loadGames(true), v = seenGames();
+  const any = list.some(playable);
+  $("games-intro").textContent = any ? "Choisis un jeu. Tes records comptent pour la fam's !" : "Des jeux autour des trad's et de la collec' arrivent bientôt.";
+  $("games-grid").innerHTML = list.map(g => {
+    const img = g.image ? `style="background-image:url('${esc(media(g.image))}')"` : "";
+    const badge = g.status === "soon" ? `<span class="game-badge">À venir</span>` : g.status === "test" ? `<span class="game-badge test">Test</span>` : !v.includes(g.id) ? `<span class="game-badge new">Nouveau</span>` : "";
+    return `<button type="button" class="game-tile" data-game="${esc(g.id)}" ${playable(g) ? "" : 'aria-disabled="true"'}>
+      <div class="game-img" ${img}>${g.image ? "" : (g.icon || GAME_ICON[g.id] || "✦")}</div>${badge}
+      <div class="game-body"><span class="game-name">${esc(g.name)}</span><span class="game-desc">${esc(g.description || "")}</span></div></button>`;
+  }).join("");
+}
+$("games-grid").addEventListener("click", e => {
+  const t = e.target.closest(".game-tile"); if (!t) return;
+  const g = (GAMES || []).find(x => x.id === t.dataset.game);
+  if (!g || !playable(g)) { toast("Ce jeu arrive bientôt !"); return; }
+  openGame(g);
+});
+function loadScript(src) {
+  return new Promise((ok, ko) => { const sc = document.createElement("script"); sc.src = src; sc.onload = ok; sc.onerror = () => ko(new Error("chargement")); document.head.appendChild(sc); });
+}
+function gameApi(g) {
+  return {
+    game: { id: g.id, name: g.name, settings: g.settings || {} },
+    pseudo: state.pseudo, isTest: !!state.isTest,
+    cards: () => CARDS, owned: (id, v) => v ? (state.owned[id + ":" + v] || 0) : VORDER.reduce((n, x) => n + (state.owned[id + ":" + x] || 0), 0),
+    cardEl, backEl, esc,
+    audio: () => ac(), muted: () => muted, sfx,
+    asset: path => `jeux/${g.id}/${path}`,                       // fichier du dépôt (code, images)
+    media: path => media(`jeux/${g.id}/${path}`),                // fichier du stockage Supabase (sons…)
+    toast,
+    // Envoie un score ; renvoie { record, best, previous, rank, boosters, reasons }
+    async submit(track, score, accuracy = null, details = null) {
+      const r = await rpc("game_submit", { p_token: TOKEN, p_game: g.id, p_track: String(track), p_score: Math.round(score), p_accuracy: accuracy, p_details: details });
+      if (r.state) { applyState(r.state); renderAll(); }
+      if (r.boosters > 0) toast(`🎁 +${r.boosters} booster${r.boosters > 1 ? "s" : ""} offert${r.boosters > 1 ? "s" : ""} : ${r.reasons[0] || g.name}`);
+      return r;
+    },
+    bests: () => rpc("game_my_bests", { p_token: TOKEN, p_game: g.id }),
+    board: (track, limit = 20) => rpc("game_board", { p_game: g.id, p_track: String(track), p_limit: limit }),
+    progress: {
+      get: () => rpc("game_progress_get", { p_token: TOKEN, p_game: g.id }),
+      set: data => rpc("game_progress_set", { p_token: TOKEN, p_game: g.id, p_data: data })
+    },
+    quit: () => closeGame()
+  };
+}
+async function openGame(g) {
+  if (curGame) return;
+  markSeen(g.id); renderGamesDot();
+  curGame = { g, def: null };
+  $("game-title").textContent = g.name;
+  const root = $("game-root"); root.innerHTML = `<div class="game-msg">Chargement…</div>`;
+  $("game-ov").hidden = false; document.body.style.overflow = "hidden";
+  try {
+    if (!GAME_DEFS[g.id]) await loadScript(`jeux/${g.id}/jeu.js?v=${encodeURIComponent(g.settings && g.settings.version || "1")}`);
+    const def = GAME_DEFS[g.id]; if (!def) throw new Error("jeu absent");
+    if (!curGame) return;
+    curGame.def = def; root.innerHTML = "";
+    await def.start(gameApi(g), root);
+  } catch (e) {
+    console.error(e);
+    root.innerHTML = `<div class="game-msg">Ce jeu n'a pas pu se lancer. Vérifie ta connexion et réessaie.</div>`;
+  }
+}
+function closeGame() {
+  if (!curGame) return;
+  try { curGame.def && curGame.def.stop && curGame.def.stop(); } catch (e) { console.error(e); }
+  curGame = null; $("game-root").innerHTML = ""; $("game-ov").hidden = true; document.body.style.overflow = "";
+  renderGames();
+}
+$("game-quit").addEventListener("click", closeGame);
+window.Collec = { jeu: (id, def) => { GAME_DEFS[id] = def; } };
+const trackLabel = t => String(t).split("/").map(x => x.replace(/-/g, " ")).join(" · ");
+async function renderRecords() {
+  try {
+    const rows = await rpc("game_records", {});
+    $("records").hidden = !rows.length;
+    $("records-list").innerHTML = rows.map(r => `<li><span class="rt">${esc(r.game_name)} · ${esc(trackLabel(r.track))}</span><span class="rs">${r.score}</span><span class="rp">${esc(r.pseudo)}</span></li>`).join("");
+  } catch (e) { $("records").hidden = true; }
+}
+
 /* ================= Démarrage ================= */
 if (/[?&]apercu/.test(location.search)) {
   // Mode aperçu : l'admin envoie la carte en cours de modification, on la dessine dans ses 4 versions
@@ -1934,7 +2084,7 @@ setMode("new");
   catch (e) { $("login-sub").textContent = "Impossible de charger les cartes. Vérifie ta connexion et recharge la page."; return; }
   renderAll();
   if (TOKEN) {
-    try { applyState(await rpc("me", { p_token: TOKEN })); hideLogin(); renderAll(); refreshTrades(); pushSync(); }
+    try { applyState(await rpc("me", { p_token: TOKEN })); hideLogin(); renderAll(); refreshTrades(); pushSync(); loadGames(); if (!$("page-jeux").hidden) renderGames(); }
     catch (e) { if (TOKEN) { $("login-sub").textContent = "Problème de connexion. Recharge la page."; return; } }
   } else showLogin();
   setInterval(renderReserve, 1000);
