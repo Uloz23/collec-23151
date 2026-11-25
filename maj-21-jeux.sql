@@ -21,7 +21,7 @@ alter table public.games enable row level security;
 revoke all on public.games from anon, authenticated;
 
 insert into public.games (id, name, description, status, sort, settings) values
-  ('rythme', 'Le monôme', 'Suis le rythme des chants de chaque tabagn''s.', 'soon', 1, '{}'),
+  ('rythme', 'Monôme Hero', 'Suis le rythme des chants de chaque tabagn''s.', 'soon', 1, '{}'),
   ('duel',   'Le duel',   'Affronte la fam''s avec tes cartes.',            'soon', 2, '{}'),
   ('demo',   'Démo',      'Jeu d''essai du socle : touche les étoiles le plus vite possible.', 'test', 99,
              '{"max_score": 100000, "reward_daily_cap": 1, "rewards": [{"id": "demo50", "track": "*", "min_score": 50, "boosters": 1, "reason": "Démo réussie"}]}')
