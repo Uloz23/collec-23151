@@ -55,7 +55,8 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .stats{display:grid;grid-template-columns:1fr auto;gap:8px 18px;font-size:10px;text-align:left}
 .stats span:nth-child(even){text-align:right;color:var(--ink)}
 .stats span:nth-child(odd){color:var(--dim)}
-#pause{position:absolute;top:2px;right:2px;min-height:0;padding:6px 8px;font-size:9px;background:transparent;border:0}
+#pause{position:absolute;top:4px;right:4px;min-height:0;width:44px;height:40px;padding:0;font-size:12px;background:rgba(8,10,32,.75);border:2px solid #4a4380;border-radius:6px}
+button.go:disabled{opacity:.4;cursor:default}
 </style>
 </head>
 <body>
@@ -76,6 +77,7 @@ input[type=range]{width:100%;accent-color:var(--acc)}
     <h1 id="mhead">Choisis un chant</h1>
     <p id="msub"></p>
     <div class="col" id="mlist"></div>
+    <button class="go" id="mok">Valider</button>
     <p id="mrec"></p>
     <button id="mback">Retour</button>
   </div>
@@ -435,25 +437,34 @@ function showMenu(){
   if(step==='songs'){
     $('mhead').innerHTML='Choisis un chant';$('msub').textContent='';
     const un=ORDER.filter(decU);
+    if(!un.includes(dec))dec=un[0];
     html=un.map(d=>`<div class="it"><button data-k="${d}" class="${d===dec?'on':''}">${CHANTS[d]}<br><small class="lieu">${NOMS[d]}</small></button></div>`).join('');
     if(un.length<ORDER.length){const nx=ORDER[un.length];html+=`<div class="it"><button class="mystery">???</button><span class="hint">70 % sur ${NOMS[ORDER[un.length-1]]} (courte, facile)</span></div>`}
   }else if(step==='ver'){
     $('mhead').innerHTML=TITRES[dec];$('msub').textContent=SUBS[dec];
+    if(!DIFFS.some(f=>isU(dec,ver,f)))ver='court';
     html=['court','entier'].map(v=>{const ok=DIFFS.some(f=>isU(dec,v,f));
-      return `<div class="it"><button data-v="${v}" class="${ok?'':'lock'}">${VNOM[v]}</button>${ok?'':'<span class="hint">70 % en version courte pour la débloquer</span>'}</div>`}).join('');
+      return `<div class="it"><button data-v="${v}" class="${ok?(v===ver?'on':''):'lock'}">${VNOM[v]}</button>${ok?'':'<span class="hint">70 % en version courte pour la débloquer</span>'}</div>`}).join('');
   }else{
     $('mhead').innerHTML=TITRES[dec];$('msub').textContent=VNOM[ver];
+    if(!isU(dec,ver,diff))diff=DIFFS.find(f=>isU(dec,ver,f))||'facile';
     html=DIFFS.map((f,i)=>{const ok=isU(dec,ver,f),r=recOf(dec,ver,f);
       const hint=ver==='entier'?`70 % en version courte, ${i?DIFFS[i-1]:f}`:`70 % en ${DIFFS[i-1]}`;
-      return `<div class="it"><button data-f="${f}" class="${ok?'go':'lock'}">${f[0].toUpperCase()+f.slice(1)}</button>${ok?`<span class="rec">Record : ${r.toLocaleString('fr-FR')}${prog.acc[ck(dec,ver,f)]!=null?' · '+prog.acc[ck(dec,ver,f)].toFixed(1)+' %':''}</span>`:`<span class="hint">${hint}</span>`}</div>`}).join('');
+      return `<div class="it"><button data-f="${f}" class="${ok?(f===diff?'on':''):'lock'}">${f[0].toUpperCase()+f.slice(1)}</button>${ok?`<span class="rec">Record : ${r.toLocaleString('fr-FR')}${prog.acc[ck(dec,ver,f)]!=null?' · '+prog.acc[ck(dec,ver,f)].toFixed(1)+' %':''}</span>`:`<span class="hint">${hint}</span>`}</div>`}).join('');
   }
   L.innerHTML=html;$('mrec').textContent='';
+  $('mok').textContent=step==='diff'?'Jouer':'Valider';
 }
+// Toucher un choix le sélectionne ; « Valider » (ou « Jouer ») passe à l'étape suivante
 $('mlist').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b||b.classList.contains('lock')||b.classList.contains('mystery'))return;
-  if(b.dataset.k){dec=b.dataset.k;step='ver';showMenu()}
-  else if(b.dataset.v){ver=b.dataset.v;step='diff';showMenu()}
-  else if(b.dataset.f){diff=b.dataset.f;play()}
+  if(b.dataset.k)dec=b.dataset.k;else if(b.dataset.v)ver=b.dataset.v;else if(b.dataset.f)diff=b.dataset.f;
+  $('mlist').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));
+});
+$('mok').addEventListener('click',()=>{
+  if(step==='songs'){step='ver';showMenu()}
+  else if(step==='ver'){if(DIFFS.some(f=>isU(dec,ver,f))){step='diff';showMenu()}}
+  else if(isU(dec,ver,diff))play();
 });
 function showScores(){
   $('slist').innerHTML=ORDER.map(d=>{
@@ -565,9 +576,10 @@ function shrinkMono(){
   }
 }
 window.__mhDbg={grow:n=>{addJoins(mono,mono+n);mono+=n},shrink:()=>shrinkMono()}; // essais automatiques
+function buzz(ms){if(!vib)return;let ok=false;try{ok=navigator.vibrate&&navigator.vibrate(ms)}catch(e){}if(!ok)try{parent!==window&&parent.navigator.vibrate&&parent.navigator.vibrate(ms)}catch(e){}}
 function judge(k,l,n){
   cnt[k]++;
-  if(k==='r'){combo=0;pstreak=0;shake=.18;judg={k,t:0,s:0};shrinkMono();try{vib&&navigator.vibrate&&navigator.vibrate(25)}catch(e){};return}
+  if(k==='r'){combo=0;pstreak=0;shake=.18;judg={k,t:0,s:0};shrinkMono();buzz(70);return}
   combo++;maxc=Math.max(maxc,combo);addJoins(mono,mono+1);mono++;monoMax=Math.max(monoMax,mono);
   pstreak=k==='p'?pstreak+1:0;judg={k,t:0,s:pstreak};
   score+={p:300,b:150,o:50}[k]*mult();
@@ -622,7 +634,7 @@ $('again').onclick=play;
 $('hplay').onclick=()=>{step='songs';screen('menu');showMenu()};$('hscores').onclick=()=>{showScores();screen('scores')};$('hset').onclick=()=>{screen('settings');$('vib').textContent='Vibrations : '+(vib?'oui':'non');$('resetmsg').textContent=''};
 $('mback').onclick=()=>{if(step==='diff'){step='ver';showMenu()}else if(step==='ver'){step='songs';showMenu()}else screen('home')};
 $('sback').onclick=$('tback').onclick=()=>screen('home');
-$('vib').onclick=()=>{vib=!vib;try{localStorage.setItem('gh_vib',vib?'1':'0')}catch(e){}$('vib').textContent='Vibrations : '+(vib?'oui':'non')};
+$('vib').onclick=()=>{vib=!vib;if(vib)buzz(150);try{localStorage.setItem('gh_vib',vib?'1':'0')}catch(e){}$('vib').textContent='Vibrations : '+(vib?'oui':'non')};
 let resetArm=false;$('reset').onclick=()=>{
   if(!resetArm){resetArm=true;$('reset').textContent='Confirmer l’effacement';$('resetmsg').textContent=API?'Les déblocages seront perdus (tes records restent au classement)':'Records et déblocages seront perdus';return}
   resetArm=false;prog={u:{},acc:{}};if(!API)try{for(const k of Object.keys(localStorage))if(k.startsWith('gh_best_'))localStorage.removeItem(k)}catch(e){}
