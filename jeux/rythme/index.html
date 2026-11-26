@@ -1225,7 +1225,7 @@ function loop(ts){
     if(dec==='bordels')frontB(t,pulse,env);
     if(dec==='chalons'){if(mono>0)frontCB(t,pulse);if(t>0)logoFX(t,ph,env)}
     if(dec==='boquette'){if(t>0)clochetonFX(t,ph,env);if(mono>0)frontQB(t,pulse)}
-    if(dec==='cluns'){if(mono>0)frontKB(t,pulse);rosaceFX(t>0?t:0,ph,env)}
+    if(dec==='cluns'){rosaceFX(t>0?t:0,ph,env);if(mono>0)frontKB(t,pulse)} // la rosace est sur la façade : le monôme passe devant
     if(dec==='birse'){statueFX(t>0?t:0,ph,env);if(mono>0)frontSB(t,pulse)}
     drawLeavers(state==='play'?dt:0);G_ANIM=false;
 
