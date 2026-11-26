@@ -378,7 +378,7 @@ imgB.onload=()=>{
 
 let data=null,buf=null,actx=null,src=null,diff='facile',lat=0,dec='bordels';
 let state='home',notes=[],t0=0,score=0,combo=0,maxc=0,cnt,parts=[],pops=[],judg=null,banner=null,shake=0;
-let mono=0,monoMax=0,pstreak=0,clockSpin=0,holdAcc=0,lastBk=-1,sNewBeat=false;
+let mono=1,monoMax=1,pstreak=0,clockSpin=0,holdAcc=0,lastBk=-1,sNewBeat=false;
 const beam=[0,0,0],press=[0,0,0],wl=new Array(40).fill(0),fl=[0,0,0,0],monoPos=[],holding=[null,null,null],ptr=new Map();
 try{lat=+localStorage.getItem('gh_lat')||0}catch(e){}
 $('lat').value=lat;$('latv').textContent=lat+' ms';
@@ -407,17 +407,19 @@ async function syncRemote(){
   try{
     const [p,b,t]=await Promise.all([API.progress.get(),API.bests(),API.tops?API.tops().catch(()=>({})):{}]);
     if(p&&p.u)prog={u:p.u,acc:p.acc||{}};
-    prog.u[ck('bordels','court','facile')]=true;
+    prog.u[ck('bordels','court','facile')]=true;fixProg();
     BEST=b||{};TOPS=t||{};
   }catch(e){}
   if(!$('menu').hidden)showMenu();
   if(!$('scores').hidden)showScores();
 }
-function loadProg(){if(!API){try{const p=JSON.parse(localStorage.getItem('gh_prog')||'null');if(p&&p.u)prog=p}catch(e){}}prog.u[ck('bordels','court','facile')]=true;
+function loadProg(){if(!API){try{const p=JSON.parse(localStorage.getItem('gh_prog')||'null');if(p&&p.u)prog=p}catch(e){}}prog.u[ck('bordels','court','facile')]=true;fixProg();
   vib=COARSE;try{const v=localStorage.getItem('gh_vib');if(v!==null)vib=v!=='0'}catch(e){}}
 function saveProg(){if(API){API.progress.set(prog).catch(()=>{});return}try{localStorage.setItem('gh_prog',JSON.stringify(prog))}catch(e){}}
 loadProg();syncRemote();
 const isU=(d,v,f)=>!!prog.u[ck(d,v,f)];
+// Version entière en normal/difficile : ouverte dès que la même difficulté l'est en version courte
+function fixProg(){for(const d of ORDER)for(const f of DIFFS.slice(1))if(prog.u[ck(d,'court',f)])prog.u[ck(d,'entier',f)]=true}
 const decU=d=>['court','entier'].some(v=>DIFFS.some(f=>isU(d,v,f)));
 const bkey=()=>'gh_best_'+dec+'_'+ver+'_'+diff;
 function best(){return recOf(dec,ver,diff)}
@@ -439,7 +441,7 @@ function showMenu(){
   }else{
     $('mhead').innerHTML=TITRES[dec];$('msub').textContent=VNOM[ver];
     html=DIFFS.map((f,i)=>{const ok=isU(dec,ver,f),r=recOf(dec,ver,f);
-      const hint=ver==='entier'?`70 % en version courte, ${f}`:`70 % en ${DIFFS[i-1]}`;
+      const hint=ver==='entier'?`70 % en version courte, ${i?DIFFS[i-1]:f}`:`70 % en ${DIFFS[i-1]}`;
       return `<div class="it"><button data-f="${f}" class="${ok?'go':'lock'}">${f[0].toUpperCase()+f.slice(1)}</button>${ok?`<span class="rec">Record : ${r.toLocaleString('fr-FR')}${prog.acc[ck(dec,ver,f)]!=null?' · '+prog.acc[ck(dec,ver,f)].toFixed(1)+' %':''}</span>`:`<span class="hint">${hint}</span>`}</div>`}).join('');
   }
   L.innerHTML=html;$('mrec').textContent='';
@@ -499,9 +501,9 @@ function start(){
   if(!buf)return;
   actx.resume();
   HITY=dec==='bordels'?250:dec==='birse'?268:280;
-  notes=data.notes[diff].map(([t,c,d])=>({t,c,d:d||0,j:null,hold:false,broke:false}));
+  notes=data.notes[diff].map(([t,c,d])=>({t,c,d:diff==='facile'?0:(d||0),j:null,hold:false,broke:false})); // pas de notes longues en facile
   score=0;combo=0;maxc=0;cnt={p:0,b:0,o:0,r:0};parts=[];pops=[];judg=null;banner=null;
-  mono=0;monoMax=0;pstreak=0;clockSpin=0;holdAcc=0;holding.fill(null);ptr.clear();wl.fill(0);fl.fill(0);monoPos.length=0;
+  mono=1;monoMax=1;pstreak=0;clockSpin=0;holdAcc=0;holding.fill(null);ptr.clear();wl.fill(0);fl.fill(0);monoPos.length=0;
   src=actx.createBufferSource();src.buffer=buf;src.connect(actx.destination);
   t0=actx.currentTime+1.6;src.start(t0);
   src.onended=()=>{if(state==='play'||state==='pause')finish()};
@@ -527,7 +529,7 @@ function finish(){
   if(acc>=70&&ver==='court'){
     const add=(d,v,f,txt)=>{if(!isU(d,v,f)){prog.u[ck(d,v,f)]=true;unl.push(txt)}};
     add(dec,'entier',diff,NOMS[dec]+' · version entière ('+diff+')');
-    const nf=DIFFS[DIFFS.indexOf(diff)+1];if(nf)add(dec,'court',nf,NOMS[dec]+' · '+nf);
+    const nf=DIFFS[DIFFS.indexOf(diff)+1];if(nf){add(dec,'court',nf,NOMS[dec]+' · '+nf);add(dec,'entier',nf,NOMS[dec]+' · version entière ('+nf+')')}
     if(diff==='facile'){const nd=ORDER[ORDER.indexOf(dec)+1];if(nd)add(nd,'court','facile','Nouveau chant : '+NOMS[nd])}
   }
   saveProg();
@@ -550,7 +552,7 @@ function spark(x,y,n,v,cols){
   }
 }
 function shrinkMono(){
-  const before=mono;mono=Math.floor(mono/2);
+  const before=mono;mono=Math.max(1,Math.floor(mono/2)); // la tête du monôme reste toujours
   for(let i=mono;i<before&&i<mono+40;i++){
     const q=monoPos[i];if(!q)continue;
     parts.push({x:q[0]/2,y:q[1]/2-5,vx:(Math.random()-.5)*30,vy:-20-Math.random()*30,life:.5,g:60,c:'#8d8a96'});
