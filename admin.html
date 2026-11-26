@@ -96,6 +96,13 @@ td.num { font-variant-numeric: tabular-nums; }
 .drafts h3, .pub-h { margin: 0; font-family: var(--f-label); font-size: 15px; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
 .drafts h3 small { letter-spacing: .04em; color: var(--muted); text-transform: none; }
 .drafts .ctile { opacity: 1; position: relative; }
+/* Cases à cocher bien visibles (liste des joueurs) */
+#tab-players input[type=checkbox] { -webkit-appearance: none; appearance: none; width: 28px; height: 28px; margin: 0; border: 2px solid #c9a24e; border-radius: 7px; background: rgba(0,0,0,.35); cursor: pointer; display: inline-grid; place-items: center; vertical-align: middle; }
+#tab-players input[type=checkbox]::after { content: "✓"; font: 700 20px/1 system-ui, sans-serif; color: #1a1208; opacity: 0; }
+#tab-players input[type=checkbox]:checked { background: #e2c06a; border-color: #f3dc9a; }
+#tab-players input[type=checkbox]:checked::after { opacity: 1; }
+#tab-players input[type=checkbox]:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+#tab-players input[type=checkbox]:disabled { opacity: .3; cursor: not-allowed; }
 .ctile .pick { position: absolute; top: 10px; left: 10px; width: 22px; height: 22px; accent-color: #c9a24e; z-index: 2; }
 .dots { display: flex; gap: 4px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(241,223,174,.15); }
@@ -169,8 +176,8 @@ td.num { font-variant-numeric: tabular-nums; }
       <p class="status" id="g-status" role="status"></p>
       <div class="scroll">
         <table>
-          <thead><tr><th><input type="checkbox" id="p-all" aria-label="Tout cocher"></th><th>Pseudo</th><th>Cartes</th><th>Boosters</th><th>Vu</th><th>Peut offrir</th><th>Test</th><th></th></tr></thead>
-          <tbody id="p-body"><tr><td colspan="8" class="muted">Chargement…</td></tr></tbody>
+          <thead><tr><th><input type="checkbox" id="p-all" aria-label="Tout cocher"></th><th>Pseudo</th><th>Cartes</th><th>Boosters</th><th>Vu</th><th title="Peut offrir des boosters depuis l'appli">Peut offrir</th><th title="Compte test : tout débloqué, rien n'est enregistré">Test</th><th title="Joueur normal qui peut aussi jouer aux jeux en test">Testeur jeux</th><th></th></tr></thead>
+          <tbody id="p-body"><tr><td colspan="9" class="muted">Chargement…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -561,8 +568,9 @@ async function loadPlayers() {
     <td class="muted">${when(p.last_seen)}</td>
     <td><input type="checkbox" class="p-gifter" ${p.can_gift ? "checked" : ""} aria-label="${esc(p.pseudo)} peut offrir des boosters"></td>
     <td><input type="checkbox" class="p-test" ${p.is_test ? "checked" : ""} aria-label="${esc(p.pseudo)} est un compte test"></td>
+    <td><input type="checkbox" class="p-gtest" ${p.game_tester ? "checked" : ""} ${p.game_tester === undefined ? "disabled title=\"Mise à jour n° 23 nécessaire\"" : ""} aria-label="${esc(p.pseudo)} teste les jeux"></td>
     <td><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn p-pin" type="button">Code</button><button class="btn p-ren" type="button">Renommer</button><button class="btn danger p-del" type="button">Suppr.</button></div></td>
-  </tr>`).join("") : `<tr><td colspan="8" class="muted">Personne ne s'est encore inscrit.</td></tr>`;
+  </tr>`).join("") : `<tr><td colspan="9" class="muted">Personne ne s'est encore inscrit.</td></tr>`;
 }
 $("p-refresh").onclick = loadPlayers;
 $("p-all").onchange = e => document.querySelectorAll(".p-sel").forEach(c => c.checked = e.target.checked);
@@ -610,6 +618,15 @@ $("p-body").addEventListener("change", async e => {
     ? `${p.pseudo} est un compte test : tout débloqué, boosters illimités, invisible pour les autres.`
     : `${p.pseudo} redevient un joueur normal (il retrouve ses vraies cartes).`, !error);
   if (error) e.target.checked = !e.target.checked; else loadPlayers();
+});
+$("p-body").addEventListener("change", async e => {
+  if (!e.target.classList.contains("p-gtest")) return;
+  const tr = e.target.closest("tr"), p = players.find(x => x.id === tr.dataset.id);
+  const { error } = await SB.rpc("admin_set_game_tester", { p_id: p.id, p_on: e.target.checked });
+  say($("g-status"), error ? "Erreur : " + error.message + " (as-tu installé la mise à jour n° 23 ?)" : e.target.checked
+    ? `${p.pseudo} peut maintenant jouer aux jeux en test (ses cartes et boosters ne changent pas).`
+    : `${p.pseudo} ne voit plus les jeux en test.`, !error);
+  if (error) e.target.checked = !e.target.checked;
 });
 $("p-body").addEventListener("change", async e => {
   if (!e.target.classList.contains("p-gifter")) return;
