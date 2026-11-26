@@ -1992,7 +1992,7 @@ async function renderGames() {
   if (teaser) return;
   $("games-intro").textContent = any ? "Choisis un jeu. Tes records comptent pour la fam's !" : "Des jeux autour des trad's et de la collec' arrivent bientôt.";
   $("games-grid").innerHTML = list.map(g => {
-    const img = g.image ? `style="background-image:url('${esc(media(g.image))}')"` : "";
+    const img = g.image ? `style="background-image:url('${esc(/^jeux\//.test(g.image) ? g.image : media(g.image))}')"` : "";
     const badge = g.status === "soon" ? `<span class="game-badge">À venir</span>` : g.status === "test" ? `<span class="game-badge test">Test</span>` : !v.includes(g.id) ? `<span class="game-badge new">Nouveau</span>` : "";
     return `<button type="button" class="game-tile" data-game="${esc(g.id)}" ${playable(g) ? "" : 'aria-disabled="true"'}>
       <div class="game-img" ${img}>${g.image ? "" : (g.icon || GAME_ICON[g.id] || "✦")}</div>${badge}
@@ -2026,6 +2026,7 @@ function gameApi(g) {
       return r;
     },
     bests: () => rpc("game_my_bests", { p_token: TOKEN, p_game: g.id }),
+    tops: () => rpc("game_tops", { p_game: g.id }),                // meilleur score de la fam's pour chaque piste
     board: (track, limit = 20) => rpc("game_board", { p_game: g.id, p_track: String(track), p_limit: limit }),
     progress: {
       get: () => rpc("game_progress_get", { p_token: TOKEN, p_game: g.id }),
@@ -2060,12 +2061,14 @@ function closeGame() {
 }
 $("game-quit").addEventListener("click", closeGame);
 window.Collec = { jeu: (id, def) => { GAME_DEFS[id] = def; } };
-const trackLabel = t => String(t).split("/").map(x => x.replace(/-/g, " ")).join(" · ");
+// Noms lisibles des pistes : réglage "labels" du jeu dans l'admin (ex. { "bordels": "Monôme de Bordel's", "court": "courte" })
+const trackLabel = (t, game) => { const L = ((GAMES || []).find(g => g.id === game) || {}).settings?.labels || {}; return String(t).split("/").map(x => L[x] || x.replace(/-/g, " ")).join(" · "); };
 async function renderRecords() {
   try {
+    await loadGames();
     const rows = await rpc("game_records", {});
     $("records").hidden = !rows.length;
-    $("records-list").innerHTML = rows.map(r => `<li><span class="rt">${esc(r.game_name)} · ${esc(trackLabel(r.track))}</span><span class="rs">${r.score}</span><span class="rp">${esc(r.pseudo)}</span></li>`).join("");
+    $("records-list").innerHTML = rows.map(r => `<li><span class="rt">${esc(r.game_name)} · ${esc(trackLabel(r.track, r.game))}</span><span class="rs">${r.score}</span><span class="rp">${esc(r.pseudo)}</span></li>`).join("");
   } catch (e) { $("records").hidden = true; }
 }
 
