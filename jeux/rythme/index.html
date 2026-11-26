@@ -296,7 +296,14 @@ function buildLayers(im,w,h,rects,lf){
 }
 let layersC=null,frontC=null,layersB=null,occB=null,occF=null;
 /* Zamat : damier 7x7, centre (180,397), demi-diagonales 132 et 85 */
-const ZN=7,ZX=180,ZY=397,ZA=132,ZB=85,ZBOX=[44,310,272,174];
+const ZN=7,ZBOX=[40,298,280,180];
+/* Le Zamat vu en perspective : un cerf-volant (pointe du haut 180,302 ; côtés 46/313,373 ; pointe du bas 180,472).
+   ZH envoie le carré (u,v) de 0 à 1 sur l'image, ZHI fait l'inverse */
+const ZH=[89.743881,-140.652972,180,19.451973,17.053078,302,-0.138198,-0.14463,1],
+      ZHI=[0.01423483,0.02686573,-10.67571923,-0.01434186,0.02686573,-5.53191635,-0.00010703,0.00759839,1];
+const zFwd=(u,v)=>{const w=ZH[6]*u+ZH[7]*v+1;return [(ZH[0]*u+ZH[1]*v+ZH[2])/w,(ZH[3]*u+ZH[4]*v+ZH[5])/w]};
+const zInv=(x,y)=>{const w=ZHI[6]*x+ZHI[7]*y+1;return [(ZHI[0]*x+ZHI[1]*y+ZHI[2])/w,(ZHI[3]*x+ZHI[4]*y+ZHI[5])/w]};
+const [ZX,ZY]=zFwd(.5,.5);
 let zPix=null,zLum=null,zCan=null,zCtx=null,zImg=null;
 function buildZamat(){
   try{
@@ -304,7 +311,7 @@ function buildZamat(){
     const [bx,by,bw,bh]=ZBOX,p=c.getImageData(bx,by,bw,bh).data;
     zPix=new Int16Array(bw*bh).fill(-1);zLum=new Float32Array(bw*bh);
     for(let j=0;j<bh;j++)for(let i=0;i<bw;i++){
-      const x=bx+i,y=by+j,P=(x-ZX)/ZA,Q=(y-ZY)/ZB,u=(P+Q+1)/2*ZN,v=(Q-P+1)/2*ZN;
+      const x=bx+i,y=by+j,[uu,vv]=zInv(x+.5,y+.5),u=uu*ZN,v=vv*ZN;
       if(u<0||v<0||u>=ZN||v>=ZN)continue;
       const k=(j*bw+i)*4,r=p[k],g2=p[k+1];
       if(!((r>165&&g2>120)||(r>100&&g2<105&&r-g2>40)))continue;
@@ -316,7 +323,9 @@ function buildZamat(){
 const zI=new Float32Array(49),zC=new Array(49);
 /* Effets autour du Zamat, en plus du damier : halo, ondes de choc, colonne de lumière,
    projecteurs depuis les bidons, gerbes d'étincelles et éclairs aux paliers de combo */
-function zDiamond(sc){g.beginPath();g.moveTo(ZX-ZA*sc,ZY);g.lineTo(ZX,ZY-ZB*sc);g.lineTo(ZX+ZA*sc,ZY);g.lineTo(ZX,ZY+ZB*sc);g.closePath()}
+// contour du Zamat agrandi ou réduit autour de son centre, en respectant la perspective
+function zDiamond(sc){const a=.5-.5*sc,b=.5+.5*sc,P=[zFwd(a,a),zFwd(b,a),zFwd(b,b),zFwd(a,b)];
+  g.beginPath();g.moveTo(P[0][0],P[0][1]);for(let k=1;k<4;k++)g.lineTo(P[k][0],P[k][1]);g.closePath()}
 function zamatAura(t,ph,env){
   const c=combo;if(c<3)return;
   const bk=beatN(t),tc=c>=50?TINTS[1+md(bk,4)]:TINTS[0],rgb=a=>'rgba('+tc[0]+','+tc[1]+','+tc[2]+','+Math.max(0,a).toFixed(3)+')';
@@ -324,14 +333,14 @@ function zamatAura(t,ph,env){
   /* halo qui bat sur le contour */
   for(let k=0;k<3;k++){zDiamond(1.02+k*.05+env*.05);g.strokeStyle=rgb((.25+.55*env)*(1-k*.3)*Math.min(1,c/8));g.lineWidth=3;g.stroke()}
   /* ondes de choc en losange qui partent du centre */
-  if(c>=10)for(let w=0;w<(c>=30?3:2);w++){const q=(ph+w/(c>=30?3:2))%1,sc=.15+q*(c>=30?2.4:1.8);zDiamond(sc);g.strokeStyle=rgb((1-q)*.85);g.lineWidth=3+(1-q)*3;g.stroke()}
+  if(c>=10)for(let w=0;w<(c>=30?2:1);w++){const q=(ph+w/2)%1,sc=.1+q*1.15;zDiamond(sc);g.strokeStyle=rgb((1-q)*(1-q)*.4);g.lineWidth=1.5+(1-q)*1.5;g.stroke()}
   /* colonne de lumière qui monte du centre */
   if(c>=20){const k=Math.min(1,(c-20)/20),w=18+env*22+k*14,gr=g.createLinearGradient(0,ZY,0,0);
     gr.addColorStop(0,rgb((.22+.45*env)*k+.08));gr.addColorStop(1,rgb(0));g.fillStyle=gr;g.fillRect(ZX-w/2,0,w,ZY);
-    g.fillStyle=rgb((.3+.5*env)*k);g.beginPath();g.ellipse(ZX,ZY,w*.9,w*.32,0,0,7);g.fill()}
+    g.fillStyle=rgb((.3+.5*env)*k);zDiamond(w/260);g.fill()}
   /* projecteurs : un faisceau par bidon allumé, qui balaie le damier */
   if(c>=30)BARRELS.forEach((b,i)=>{
-    if(fl[i]<.3)return;const sw=Math.sin(t*1.7+i*1.6)*.35,tx=ZX+Math.cos(i*1.57+sw)*ZA*.45,ty=ZY+Math.sin(i*1.57+sw)*ZB*.45;
+    if(fl[i]<.3)return;const sw=Math.sin(t*1.7+i*1.6)*.35,[tx,ty]=zFwd(.5+Math.cos(i*1.57+sw)*.28,.5+Math.sin(i*1.57+sw)*.28);
     const q=c>=50?TINTS[1+md(bk+i,4)]:TINTS[0];g.fillStyle='rgba('+q[0]+','+q[1]+','+q[2]+','+((.16+.32*env)*fl[i]).toFixed(3)+')';
     const dx=tx-b.x,dy=ty-(b.y-8),L=Math.hypot(dx,dy),nx=-dy/L,ny=dx/L,wd=22+env*10;
     g.beginPath();g.moveTo(b.x,b.y-8);g.lineTo(tx+nx*wd,ty+ny*wd);g.lineTo(tx-nx*wd,ty-ny*wd);g.fill();
@@ -339,7 +348,7 @@ function zamatAura(t,ph,env){
   });
   /* éclair blanc du damier sur le premier temps de chaque mesure, à partir de 100 */
   if(c>=100&&md(bk,4)===0){zDiamond(1);g.fillStyle='rgba(255,250,225,'+(env*.35).toFixed(3)+')';g.fill()}
-  if(c>=100){g.strokeStyle='rgba(255,250,220,'+((1-ph)*.6).toFixed(3)+')';g.lineWidth=3;g.beginPath();g.ellipse(ZX,ZY,20+ph*260,(20+ph*260)*ZB/ZA,0,0,7);g.stroke()}
+  if(c>=100){zDiamond(1+ph*1.6);g.strokeStyle='rgba(255,250,220,'+((1-ph)*.5).toFixed(3)+')';g.lineWidth=2;g.stroke()}
   g.globalCompositeOperation='source-over';
   /* gerbe d'étincelles du centre sur chaque temps, à partir de 50 */
   if(c>=50&&state==='play'&&sNewBeat){const n=6+Math.min(14,Math.floor((c-50)/10));
@@ -550,10 +559,23 @@ function start(){
   notes=data.notes[diff].map(([t,c,d])=>({t,c,d:diff==='facile'?0:(d||0),j:null,hold:false,broke:false})); // pas de notes longues en facile
   score=0;combo=0;maxc=0;cnt={p:0,b:0,o:0,r:0};parts=[];pops=[];judg=null;banner=null;
   mono=1;monoMax=1;joins.clear();leavers=[];lastG.length=0;pstreak=0;clockSpin=0;holdAcc=0;holding.fill(null);ptr.clear();wl.fill(0);fl.fill(0);monoPos.length=0;
-  src=actx.createBufferSource();src.buffer=buf;src.connect(actx.destination);
-  t0=actx.currentTime+1.6;src.start(t0);
-  src.onended=()=>{if(state==='play'||state==='pause')finish()};
+  schedule();
   state='play';$('menu').hidden=true;$('end').hidden=true;$('pause').hidden=false;
+}
+// Lance le morceau 1,6 s plus tard sur l'horloge audio. Si cette horloge n'avance pas encore
+// (son pas tout à fait démarré, téléphone lent à réveiller l'audio), on recale tout dès qu'elle repart.
+function schedule(){
+  if(src){src.onended=null;try{src.stop()}catch(e){}}
+  src=actx.createBufferSource();src.buffer=buf;src.connect(actx.destination);
+  t0=actx.currentTime+1.6;src.start(t0);schedAt=performance.now();schedCt=actx.currentTime;
+  src.onended=()=>{if(state==='play'||state==='pause')finish()};
+}
+let schedAt=0,schedCt=0;
+function checkClock(){
+  if(state!=='play'||!actx)return;
+  const real=(performance.now()-schedAt)/1000,audio=actx.currentTime-schedCt,t=actx.currentTime-t0;
+  // avant le début du morceau : l'horloge audio doit suivre le temps réel, et le compte à rebours ne peut pas dépasser 2 s
+  if(t<0&&(t<-2.2||Math.abs(real-audio)>.35)){if(actx.state!=='running')actx.resume();schedule()}
 }
 function stopAudio(){if(src){src.onended=null;try{src.stop()}catch(e){}src=null}}
 window.__mhStop=()=>{stopAudio();try{actx&&actx.close()}catch(e){}};
@@ -1128,6 +1150,7 @@ function loop(ts){
   const WL=dec==='bordels'?BWIN:dec==='boquette'?QWIN:dec==='cluns'?KWIN:dec==='birse'?SWIN:CWIN2;
 
   if(state==='play'){
+    checkClock();
     for(const n of notes){if(!n.j&&n.t<t-WIN.o){n.j='r';judge('r',n.c,n)}if(n.t>t)break}
     for(let l=0;l<3;l++){
       const n=holding[l];if(!n)continue;
