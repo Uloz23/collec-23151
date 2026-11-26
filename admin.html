@@ -388,7 +388,7 @@ async function loadGames() {
     </div>
     <label>Description<input class="gm-desc" value="${esc(g.description)}" maxlength="140"></label>
     <label>Réglages (JSON)<textarea class="gm-set" rows="5" style="font-family:ui-monospace,monospace;font-size:13px">${esc(JSON.stringify(g.settings, null, 2))}</textarea></label>
-    <div class="row"><button class="btn primary gm-save" type="button">Enregistrer</button></div>
+    <div class="row"><button class="btn primary gm-save" type="button">Enregistrer</button><button class="btn danger gm-reset" type="button">Tout remettre à zéro</button></div>
   </fieldset>`).join("");
   $("gm-sgame").innerHTML = games.map(g => `<option value="${esc(g.id)}">${esc(g.name)}</option>`).join("");
 }
@@ -410,7 +410,19 @@ async function saveGame(fs, idOverride) {
   if (error) return say($("gm-status"), "Erreur : " + error.message, false);
   say($("gm-status"), "Jeu enregistré."); loadGames();
 }
-$("gm-list").addEventListener("click", e => { const b = e.target.closest(".gm-save"); if (b) saveGame(b.closest(".gm")); });
+$("gm-list").addEventListener("click", async e => {
+  const b = e.target.closest(".gm-save"); if (b) return saveGame(b.closest(".gm"));
+  const r = e.target.closest(".gm-reset"); if (!r) return;
+  const id = r.closest(".gm").dataset.id, name = (games.find(g => g.id === id) || {}).name || id;
+  // deux appuis pour confirmer
+  if (r.dataset.armed !== "1") { r.dataset.armed = "1"; r.textContent = "Confirmer : tout effacer"; say($("gm-status"), `Effacer les scores, la progression et les récompenses de tous les joueurs pour « ${name} » ? Appuie encore pour confirmer.`, false);
+    setTimeout(() => { r.dataset.armed = ""; r.textContent = "Tout remettre à zéro"; }, 5000); return; }
+  r.dataset.armed = ""; r.textContent = "Tout remettre à zéro";
+  const { data, error } = await SB.rpc("admin_game_reset", { p_game: id });
+  if (error) return say($("gm-status"), /admin_game_reset/.test(error.message) ? "Il manque la mise à jour n° 24." : "Erreur : " + error.message, false);
+  say($("gm-status"), `« ${name} » remis à zéro : ${data.scores} score(s), ${data.progressions} progression(s) et ${data.recompenses} récompense(s) effacés. Les boosters déjà gagnés restent.`);
+  $("gm-scores").innerHTML = "";
+});
 $("gm-refresh").onclick = loadGames;
 $("gm-add").onclick = () => {
   const id = $("gm-newid").value.trim().toLowerCase();
