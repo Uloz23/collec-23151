@@ -397,6 +397,7 @@ const SUBS=NOMS;
 const ck=(d,v,f)=>d+'|'+v+'|'+f;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let prog={u:{},acc:{}},vib=true;
+const AUTO=new Set(); // ouvertures automatiques du mode test, jamais enregistrées
 /* ---- Liaison avec l'appli : progression et records rattachés au compte, classement commun ---- */
 const API=(()=>{try{return parent!==window&&parent.__collecGameApi||null}catch(e){return null}})();
 const TK=(d,v,f)=>d+'/'+v+'/'+f;
@@ -415,11 +416,13 @@ async function syncRemote(){
 }
 function loadProg(){if(!API){try{const p=JSON.parse(localStorage.getItem('gh_prog')||'null');if(p&&p.u)prog=p}catch(e){}}prog.u[ck('bordels','court','facile')]=true;fixProg();
   vib=COARSE;try{const v=localStorage.getItem('gh_vib');if(v!==null)vib=v!=='0'}catch(e){}}
-function saveProg(){if(API){API.progress.set(prog).catch(()=>{});return}try{localStorage.setItem('gh_prog',JSON.stringify(prog))}catch(e){}}
+function saveProg(){if(API){const u={...prog.u};AUTO.forEach(k=>delete u[k]);API.progress.set({u,acc:prog.acc}).catch(()=>{});return}try{localStorage.setItem('gh_prog',JSON.stringify(prog))}catch(e){}}
 loadProg();syncRemote();
 const isU=(d,v,f)=>!!prog.u[ck(d,v,f)];
 // Version entière en normal/difficile : ouverte dès que la même difficulté l'est en version courte
-function fixProg(){for(const d of ORDER)for(const f of DIFFS.slice(1))if(prog.u[ck(d,'court',f)])prog.u[ck(d,'entier',f)]=true}
+function fixProg(){for(const d of ORDER)for(const f of DIFFS.slice(1))if(prog.u[ck(d,'court',f)])prog.u[ck(d,'entier',f)]=true;
+  // Jeu en test : tous les chants ouverts en version courte facile (ces ouvertures-là ne sont pas enregistrées)
+  if(API&&API.game&&API.game.status==='test')for(const d of ORDER){const k=ck(d,'court','facile');if(!prog.u[k]){prog.u[k]=true;AUTO.add(k)}}}
 const decU=d=>['court','entier'].some(v=>DIFFS.some(f=>isU(d,v,f)));
 const bkey=()=>'gh_best_'+dec+'_'+ver+'_'+diff;
 function best(){return recOf(dec,ver,diff)}
@@ -527,7 +530,7 @@ function finish(){
   const key=ck(dec,ver,diff);prog.acc[key]=Math.max(prog.acc[key]||0,acc);
   const unl=[];
   if(acc>=70&&ver==='court'){
-    const add=(d,v,f,txt)=>{if(!isU(d,v,f)){prog.u[ck(d,v,f)]=true;unl.push(txt)}};
+    const add=(d,v,f,txt)=>{const k=ck(d,v,f);if(AUTO.delete(k))return;if(!isU(d,v,f)){prog.u[k]=true;unl.push(txt)}};
     add(dec,'entier',diff,NOMS[dec]+' · version entière ('+diff+')');
     const nf=DIFFS[DIFFS.indexOf(diff)+1];if(nf){add(dec,'court',nf,NOMS[dec]+' · '+nf);add(dec,'entier',nf,NOMS[dec]+' · version entière ('+nf+')')}
     if(diff==='facile'){const nd=ORDER[ORDER.indexOf(dec)+1];if(nd)add(nd,'court','facile','Nouveau chant : '+NOMS[nd])}

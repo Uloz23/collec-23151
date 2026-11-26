@@ -2010,7 +2010,7 @@ function loadScript(src) {
 }
 function gameApi(g) {
   return {
-    game: { id: g.id, name: g.name, settings: g.settings || {} },
+    game: { id: g.id, name: g.name, status: g.status, settings: g.settings || {} },
     pseudo: state.pseudo, isTest: !!state.isTest,
     cards: () => CARDS, owned: (id, v) => v ? (state.owned[id + ":" + v] || 0) : VORDER.reduce((n, x) => n + (state.owned[id + ":" + x] || 0), 0),
     cardEl, backEl, esc,
