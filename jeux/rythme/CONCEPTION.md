@@ -34,7 +34,7 @@ Ordre de progression et noms :
 | # | Lieu (tabagn's) | Chant | Tempo | Coupe de la version courte |
 |---|---|---|---|---|
 | 1 | Bordel's | Monôme de Bordel's | 112 BPM | 0:00 → 1:43 |
-| 2 | Chalon's | La cousine Lison | 144 | 0:00 → 1:27 |
+| 2 | Chalon's | La cousine Lison | 144 | 0:00 → 1:22 (coupe refaite par Mathieu, fondu de 2 s) |
 | 3 | Boquette | Dans les rues | 144 | 0:00 → 1:28 |
 | 4 | Clun's | Monôme de Clun's | 136 | 0:00 → 1:38 |
 | 5 | Birse | Monôme de Birse | 144 | 0:00 → 1:24 |
