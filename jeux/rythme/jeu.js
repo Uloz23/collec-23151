@@ -1,4 +1,4 @@
-/* Monôme Héro : le jeu complet est dans index.html (prototype validé), chargé dans un cadre.
+/* Monome Hero : le jeu complet est dans index.html (prototype validé), chargé dans un cadre.
    Il récupère l'« api » de l'appli via parent.__collecGameApi (même site), pour la progression et les scores. */
 (function () {
   let fr = null;

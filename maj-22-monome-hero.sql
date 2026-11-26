@@ -1,6 +1,6 @@
 -- =====================================================================
 --  Collec' 23-151 : mise à jour n° 22
---  Monôme Héro : nom, vignette, réglages (score maximum, récompenses, noms des pistes)
+--  Monome Hero : nom, vignette, réglages (score maximum, récompenses, noms des pistes)
 --  et record de la fam's pour chaque piste, affiché dans « Meilleurs scores » du jeu.
 --  À coller dans Supabase > SQL Editor > New query, puis « Run ». Relançable sans danger
 --  (l'état du jeu, « à venir », « test » ou « ouvert », n'est pas modifié).
@@ -8,7 +8,7 @@
 -- =====================================================================
 
 update public.games set
-  name = 'Monôme Héro',
+  name = 'Monome Hero',
   description = 'Suis le rythme des chants de chaque tabagn''s et fais grandir ton monôme.',
   image = 'jeux/rythme/vignette.png',
   settings = jsonb_build_object(
