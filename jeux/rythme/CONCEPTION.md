@@ -37,7 +37,7 @@ Ordre de progression et noms :
 | 2 | Chalon's | La cousine Lison | 144 | 0:00 → 1:22 (coupe refaite par Mathieu, fondu de 2 s) |
 | 3 | Boquette | Dans les rues | 144 | 0:00 → 1:13 (coupe refaite par Mathieu, fondu de 2 s) |
 | 4 | Clun's | Monôme de Clun's | 136 | 0:00 → 1:25 (coupe refaite par Mathieu, fondu de 2 s) |
-| 5 | Birse | Monôme de Birse | 144 | 0:00 → 1:24 |
+| 5 | Birse | Monôme de Birse | 144 | 0:00 → 1:22 (coupe refaite par Mathieu, fondu de 2 s) |
 
 - Uniquement des remix (Mathieu a abandonné les versions a cappella). Chaque chant existe en version courte (environ un couplet et un refrain, fondu de 2 s) et entière. Les coupes sont à valider à l'oreille par Mathieu.
 - **Au départ**, seul Monôme de Bordel's est ouvert, en version courte et en facile.
