@@ -525,6 +525,16 @@ function start(){
 }
 function stopAudio(){if(src){src.onended=null;try{src.stop()}catch(e){}src=null}}
 window.__mhStop=()=>{stopAudio();try{actx&&actx.close()}catch(e){}};
+// Touche « retour » du téléphone (relayée par l'appli) : pause en partie, retour d'un cran dans les menus.
+// Renvoie false sur l'écran titre : l'appli ferme alors le jeu.
+window.__mhBack=()=>{
+  if(state==='play'){pause();return true}
+  if(state==='pause')return true;
+  if(!$('end').hidden){toMenu();return true}
+  if(!$('menu').hidden){$('mback').click();return true}
+  if(!$('scores').hidden||!$('settings').hidden){screen('home');return true}
+  return false;
+};
 function finish(){
   stopAudio();state='end';$('pause').hidden=true;
   const tot=notes.length||1,acc=(cnt.p+cnt.b*.7+cnt.o*.4)/tot*100;

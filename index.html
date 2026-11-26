@@ -2042,6 +2042,7 @@ async function openGame(g) {
   $("game-title").textContent = g.name;
   const root = $("game-root"); root.innerHTML = `<div class="game-msg">Chargement…</div>`;
   $("game-ov").hidden = false; document.body.style.overflow = "hidden";
+  try { history.pushState({ jeu: g.id }, ""); } catch (e) {}   // la touche « retour » du téléphone reste dans le jeu
   try {
     if (!GAME_DEFS[g.id]) await loadScript(`jeux/${g.id}/jeu.js?v=${encodeURIComponent(g.settings && g.settings.version || "1")}`);
     const def = GAME_DEFS[g.id]; if (!def) throw new Error("jeu absent");
@@ -2053,13 +2054,22 @@ async function openGame(g) {
     root.innerHTML = `<div class="game-msg">Ce jeu n'a pas pu se lancer. Vérifie ta connexion et réessaie.</div>`;
   }
 }
-function closeGame() {
+function closeGame(fromBack) {
   if (!curGame) return;
+  if (!fromBack) try { if (history.state && history.state.jeu) history.back(); } catch (e) {}
   try { curGame.def && curGame.def.stop && curGame.def.stop(); } catch (e) { console.error(e); }
   curGame = null; $("game-root").innerHTML = ""; $("game-ov").hidden = true; document.body.style.overflow = "";
   renderGames();
 }
-$("game-quit").addEventListener("click", closeGame);
+$("game-quit").addEventListener("click", () => closeGame());
+// Touche « retour » : le jeu la traite s'il le peut (pause, menu précédent), sinon on ferme le jeu
+window.addEventListener("popstate", () => {
+  if (!curGame) return;
+  let handled = false;
+  try { handled = !!(curGame.def && curGame.def.back && curGame.def.back()); } catch (e) {}
+  if (handled) { try { history.pushState({ jeu: curGame.g.id }, ""); } catch (e) {} }
+  else closeGame(true);
+});
 window.Collec = { jeu: (id, def) => { GAME_DEFS[id] = def; } };
 // Noms lisibles des pistes : réglage "labels" du jeu dans l'admin (ex. { "bordels": "Monôme de Bordel's", "court": "courte" })
 const trackLabel = (t, game) => { const L = ((GAMES || []).find(g => g.id === game) || {}).settings?.labels || {}; return String(t).split("/").map(x => L[x] || x.replace(/-/g, " ")).join(" · "); };

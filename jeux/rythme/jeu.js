@@ -13,6 +13,7 @@
       fr.addEventListener("load", () => { try { fr.contentWindow.focus(); } catch (e) {} });
       root.appendChild(fr);
     },
+    back() { try { return !!(fr && fr.contentWindow.__mhBack && fr.contentWindow.__mhBack()); } catch (e) { return false; } },
     stop() {
       try { fr && fr.contentWindow && fr.contentWindow.__mhStop && fr.contentWindow.__mhStop(); } catch (e) {}
       if (fr) fr.remove();
