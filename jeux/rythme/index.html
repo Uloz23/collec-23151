@@ -30,7 +30,7 @@ p{margin:0;font-size:10px;line-height:1.8;color:var(--dim)}
 .home .spacer{display:none}
 .col{display:flex;flex-direction:column;gap:12px;align-items:stretch;min-width:60%}
 button.lock{opacity:.45;border-style:dashed}
-#slist{width:100%;max-width:320px;overflow-y:auto;max-height:60%;font-size:9px;text-align:left}
+#slist{width:100%;max-width:320px;overflow-y:auto;max-height:64%;font-size:9px;text-align:left}
 #slist h2{font-size:10px;color:var(--acc);margin:12px 0 6px;font-weight:400}
 #slist table{width:100%;border-collapse:collapse}
 #slist td{padding:3px 2px;color:var(--dim)}
@@ -64,18 +64,29 @@ button.week{background:#3a2a07;border-color:#ffd27a;color:#ffe9a8}
 .wwin b{display:block;font-size:13px;color:#fff3c4;margin:4px 0;font-weight:400}
 @keyframes wglow{from{box-shadow:0 0 0 rgba(255,210,122,0)}to{box-shadow:0 0 18px rgba(255,210,122,.55)}}
 .wrules{color:var(--dim);font-size:8px}
-.blist{width:100%;max-width:320px;max-height:44%;overflow-y:auto;font-size:9px;text-align:left}
+.blist{width:100%;max-width:320px;max-height:58%;overflow-y:auto;font-size:9px;text-align:left}
 .blist ol{margin:0;padding:0;list-style:none;counter-reset:rk}
 .blist li{counter-increment:rk;display:grid;grid-template-columns:26px 1fr auto;gap:6px;padding:5px 4px;border-bottom:1px solid #26214d;color:var(--ink)}
 .blist li::before{content:counter(rk);color:var(--acc)}
 .blist li:first-child{color:#ffe066}
 .blist li.me{background:rgba(243,162,52,.18)}
-.blist li span.a{color:var(--dim)}
+.blist li span.a{color:#8ff0c4;font-size:8px;margin-left:4px}
 .blist p{text-align:center}
 #bnav,#slist .col{width:100%;max-width:280px}
 #bnav button small,#slist button small{display:block;margin-top:5px;font-size:8px;color:var(--dim)}
 #slist .sf{color:#7dff9a}#slist .cr{color:#ffd27a}
 #slist td.k{white-space:nowrap}
+#slist .col{margin:0 auto}
+#slist h2.vh{text-align:center;margin:14px 0 6px}
+.sc{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:2px 8px;padding:7px 6px;border-bottom:1px solid #26214d}
+.sc .sl{font-size:9px;color:var(--dim)}
+.sc .sv{font-size:12px;color:var(--ink);text-align:right;white-space:nowrap}
+.sc .sv small{font-size:8px;color:var(--dim)}
+.sc .pc{grid-column:2;font-size:9px;color:#8ff0c4;text-align:right}
+.sc .pc:empty{display:none}
+.sc .fr{grid-column:1/-1;font-size:8px;color:#ffd27a}
+.sc.lk .sv{color:#4a4380;font-size:10px}
+#blist h2{font-size:10px;color:var(--acc);margin:12px 0 4px;font-weight:400;text-align:center}
 .legend{font-size:8px;color:var(--dim);margin-top:8px}
 .tabs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:340px}
 .tabs button{min-height:32px;padding:6px 7px;font-size:8px}
@@ -561,20 +572,25 @@ function showScores(){
     L.innerHTML='<div class="col">'+ORDER.map(d=>{
       if(!decU(d))return `<button class="lock">???<small>Pas encore débloqué</small></button>`;
       const n90=ACH.p90.filter(t=>t.startsWith(d+'/')).length;
-      return `<button data-d="${d}">${CHANTS[d]}<small>${API?(n90>=6?'♛ Version Maître obtenue':'Version Maître : '+n90+' / 6 à 90 %'):NOMS[d]}</small></button>`;
+      return `<button data-d="${d}">${CHANTS[d]}<small>${NOMS[d]}${API&&n90>=6?' · ♛ Maître':''}</small></button>`;
     }).join('')+'</div>';
     return;
   }
   const d=sSong;$('shead').innerHTML=TITRES[d];$('ssub').textContent=NOMS[d];
-  const rows=['court','entier'].flatMap(v=>DIFFS.map(f=>{
-    const lab=`${v==='court'?'Courte':'Entière'} · ${f}`;
-    if(!isU(d,v,f))return `<tr><td class="k">${lab}</td><td class="v">—</td><td class="v"></td><td></td></tr>`;
-    const tk=TK(d,v,f),sc=recOf(d,v,f),a=prog.acc[ck(d,v,f)],top=TOPS[tk];
-    const crown=API&&sc>0&&top&&sc>=top.score,sf=ACH.fc.includes(tk);
-    return `<tr><td class="k">${lab}</td><td class="v">${crown?'<span class="cr">♛ </span>':''}${sc?sc.toLocaleString('fr-FR'):'0'}</td><td class="v">${a!=null?a.toFixed(1)+' %':''}</td><td class="v">${sf?'<span class="sf">SF</span>':''}</td></tr>`+
-      (top&&!crown?`<tr class="fam"><td colspan="4">Record de la fam's : ${top.score.toLocaleString('fr-FR')} · ${esc(top.pseudo)}</td></tr>`:'');
-  })).join('');
-  L.innerHTML=`<table>${rows}</table>`+(API?`<div class="legend"><span class="cr">♛</span> record de la fam's · <span class="sf">SF</span> sans-faute</div>`:'');
+  const n90=ACH.p90.filter(t=>t.startsWith(d+'/')).length;
+  let h=API?`<p>${n90>=6?'♛ Version Maître obtenue':'Version Maître : '+n90+' / 6 versions à 90 %'}</p>`:'';
+  for(const v of ['court','entier']){
+    h+=`<h2 class="vh">${VLAB[v]}</h2>`;
+    for(const f of DIFFS){
+      const lab=FLAB(f);
+      if(!isU(d,v,f)){h+=`<div class="sc lk"><span class="sl">${lab}</span><span class="sv">verrouillé</span></div>`;continue}
+      const tk=TK(d,v,f),sc=recOf(d,v,f),a=prog.acc[ck(d,v,f)],top=TOPS[tk],crown=API&&sc>0&&top&&sc>=top.score,sf=ACH.fc.includes(tk);
+      h+=`<div class="sc"><span class="sl">${lab}${sf?' <span class="sf">SF</span>':''}</span><span class="sv">${crown?'<span class="cr">♛ </span>':''}${sc?sc.toLocaleString('fr-FR'):'0'} <small>pts</small></span>`+
+         `<span class="pc">${a!=null?a.toFixed(1)+' % de précision':''}</span>`+
+         (top&&!crown?`<span class="fr">Record de la fam's : ${top.score.toLocaleString('fr-FR')} · ${esc(top.pseudo)}</span>`:'')+`</div>`;
+    }
+  }
+  L.innerHTML=h+(API?`<div class="legend"><span class="cr">♛</span> record de la fam's · <span class="sf">SF</span> sans-faute</div>`:'');
 }
 $('slist').addEventListener('click',e=>{const b=e.target.closest('button[data-d]');if(!b)return;sSong=b.dataset.d;showScores()});
 function scoresBack(){if(sSong){sSong=null;showScores()}else screen('home')}
@@ -644,16 +660,17 @@ function showBoards(reset){
     nav.innerHTML=['court','entier'].map(v=>`<button data-v="${v}">${VLAB[v]}</button>`).join('');}
   else if(bS.step==='diff'){$('bhead').innerHTML=TITRES[bS.d];$('bsub').textContent=VLAB[bS.v];
     nav.innerHTML=DIFFS.map(f=>`<button data-f="${f}">${FLAB(f)}</button>`).join('');}
-  else{$('bhead').innerHTML=TITRES[bS.d];$('bsub').textContent=VLAB[bS.v]+' · '+bS.f;
+  else{$('bhead').innerHTML=TITRES[bS.d];$('bsub').textContent=VLAB[bS.v];
     L.innerHTML='<p>Chargement…</p>';
-    API.board(TK(bS.d,bS.v,bS.f),20).then(rows=>{if(bS.step!=='list')return;
-      L.innerHTML=rows.length?'<ol>'+rows.map(r=>`<li class="${r.pseudo===API.pseudo?'me':''}"><span>${esc(r.pseudo)}</span><span>${fmtN(r.score)} <span class="a">${r.accuracy!=null?(+r.accuracy).toFixed(1)+' %':''}</span></span></li>`).join('')+'</ol>':'<p>Pas encore de score sur cette version.</p>'})
-      .catch(()=>{L.innerHTML='<p>Classement indisponible (connexion ?)</p>'});}
+    Promise.all(DIFFS.map(f=>API.board(TK(bS.d,bS.v,f),10).catch(()=>null))).then(res=>{if(bS.step!=='list')return;
+      L.innerHTML=DIFFS.map((f,i)=>{const rows=res[i];
+        return `<h2>${FLAB(f)}</h2>`+(rows==null?'<p>Indisponible (connexion ?)</p>':rows.length?'<ol>'+rows.map(r=>`<li class="${r.pseudo===API.pseudo?'me':''}"><span>${esc(r.pseudo)}</span><span>${fmtN(r.score)} <span class="a">${r.accuracy!=null?(+r.accuracy).toFixed(1)+' %':''}</span></span></li>`).join('')+'</ol>':'<p>Pas encore de score.</p>')}).join('');
+      L.scrollTop=0;});}
 }
 $('bnav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
-  if(b.dataset.d){bS.d=b.dataset.d;bS.step='ver'}else if(b.dataset.v){bS.v=b.dataset.v;bS.step='diff'}else if(b.dataset.f){bS.f=b.dataset.f;bS.step='list'}
+  if(b.dataset.d){bS.d=b.dataset.d;bS.step='ver'}else if(b.dataset.v){bS.v=b.dataset.v;bS.step='list'}
   showBoards()});
-function boardsBack(){const up={list:'diff',diff:'ver',ver:'song'}[bS.step];if(up){bS.step=up;showBoards()}else screen('home')}
+function boardsBack(){const up={list:'ver',ver:'song'}[bS.step];if(up){bS.step=up;showBoards()}else screen('home')}
 let loading=false;
 async function play(){
   weeklyMode=false;if(diff==='tres')diff='difficile';
