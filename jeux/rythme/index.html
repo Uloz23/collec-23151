@@ -548,7 +548,7 @@ showMenu();
 
 function now(){
   if(!actx)return -9;
-  return actx.currentTime-t0-lat/1000-(actx.outputLatency||actx.baseLatency||0);
+  return actx.currentTime-t0-lat/1000-audLat;
 }
 function mult(){return Math.min(4,1+Math.floor(combo/10))}
 
@@ -567,12 +567,22 @@ function start(){
 function schedule(){
   if(src){src.onended=null;try{src.stop()}catch(e){}}
   src=actx.createBufferSource();src.buffer=buf;src.connect(actx.destination);
-  t0=actx.currentTime+1.6;src.start(t0);schedAt=performance.now();schedCt=actx.currentTime;
+  t0=actx.currentTime+1.6;src.start(t0);schedAt=performance.now();schedCt=actx.currentTime;readLat(true);
   src.onended=()=>{if(state==='play'||state==='pause')finish()};
 }
 let schedAt=0,schedCt=0;
+/* Latence de sortie du son : certains téléphones (Chrome Android, appli installée, Bluetooth) renvoient parfois
+   des valeurs absurdes (des dizaines, voire des centaines de secondes), ce qui faisait partir le compte à rebours
+   de 40 ou 231 puis tomber les notes en accéléré. On n'accepte que des valeurs plausibles, lissées dans le temps. */
+let audLat=0;
+const saneLat=v=>typeof v==='number'&&isFinite(v)&&v>=0&&v<.5?v:null;
+function readLat(first){
+  const v=saneLat(actx&&actx.outputLatency)??saneLat(actx&&actx.baseLatency);
+  if(v==null)return;audLat=first?v:audLat+(v-audLat)*.02;
+}
 function checkClock(){
   if(state!=='play'||!actx)return;
+  readLat(false);
   const real=(performance.now()-schedAt)/1000,audio=actx.currentTime-schedCt,t=actx.currentTime-t0;
   // avant le début du morceau : l'horloge audio doit suivre le temps réel, et le compte à rebours ne peut pas dépasser 2 s
   if(t<0&&(t<-2.2||Math.abs(real-audio)>.35)){if(actx.state!=='running')actx.resume();schedule()}
