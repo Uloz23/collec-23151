@@ -78,6 +78,16 @@ button.week{background:#3a2a07;border-color:#ffd27a;color:#ffe9a8}
 #slist td.k{white-space:nowrap}
 #slist .col{margin:0 auto}
 #slist h2.vh{text-align:center;margin:14px 0 6px}
+.sum{display:grid;grid-template-columns:1fr auto;gap:6px 10px;font-size:10px;margin:4px auto 10px;max-width:260px}
+.sum span:nth-child(even){text-align:right;color:var(--ink)}
+.sum span:nth-child(odd){color:var(--dim)}
+.pg{display:grid;grid-template-columns:1fr auto auto auto;align-items:center;gap:4px 10px;padding:8px 6px;border-bottom:1px solid #26214d;font-size:10px}
+.pg .k{color:var(--dim);font-size:9px}
+.pg .acc{text-align:right;color:var(--ink)}
+.pg .acc.ok{color:#8ff0c4}.pg .acc.top{color:#ffd27a}
+.pg .rk{text-align:right;color:var(--dim);font-size:9px;min-width:44px}
+.pg .sfb{min-width:18px;text-align:right}
+.pg.lk .acc{color:#4a4380;font-size:9px}
 .sc{display:grid;grid-template-columns:1fr auto;align-items:baseline;gap:2px 8px;padding:7px 6px;border-bottom:1px solid #26214d}
 .sc .sl{font-size:9px;color:var(--dim)}
 .sc .sv{font-size:12px;color:var(--ink);text-align:right;white-space:nowrap}
@@ -106,7 +116,7 @@ button.go:disabled{opacity:.4;cursor:default}
       <button class="go" id="hplay">Jouer</button>
       <button class="week" id="hweek" hidden>🏆 Chant de la semaine</button>
       <button id="hboards" hidden>Classements</button>
-      <button id="hscores">Mes scores</button>
+      <button id="hscores">Ma progression</button>
       <button id="hset">Réglages</button>
     </div>
   </div>
@@ -135,7 +145,7 @@ button.go:disabled{opacity:.4;cursor:default}
   </div>
 
   <div class="ov" id="scores" hidden>
-    <h1 id="shead">Mes scores</h1>
+    <h1 id="shead">Ma progression</h1>
     <p id="ssub"></p>
     <div id="slist"></div>
     <button id="sback">Retour</button>
@@ -510,7 +520,7 @@ async function syncRemote(){
     BEST=b||{};TOPS=t||{};
   }catch(e){}
   if(!$('menu').hidden)showMenu();
-  if(!$('scores').hidden)showScores();
+  if(!$('scores').hidden)drawScores();
 }
 function loadProg(){if(!API){try{const p=JSON.parse(localStorage.getItem('gh_prog')||'null');if(p&&p.u)prog=p}catch(e){}}prog.u[ck('bordels','court','facile')]=true;fixProg();
   vib=COARSE;try{const v=localStorage.getItem('gh_vib');if(v!==null)vib=v!=='0'}catch(e){}}
@@ -562,38 +572,47 @@ $('mok').addEventListener('click',()=>{
   else if(step==='ver'){if(DIFFS.some(f=>isU(dec,ver,f))){step='diff';showMenu()}}
   else if(isU(dec,ver,diff))play();
 });
-/* ---- Mes scores : la liste des chants, puis le détail d'un chant ---- */
-let sSong=null;
+/* ---- Ma progression : un résumé, puis pour chaque chant la précision, le rang dans la fam's et les sans-faute ---- */
+let sSong=null,RANKS={};
+const ACCN=a=>a==null?'':a.toFixed(1).replace('.',',')+' %';
+const rankTxt=r=>r?(r.rank===1?'1er':r.rank+'e')+' / '+r.of:'';
 function showScores(){
   screen('scores');const L=$('slist');
+  if(API&&API.ranks)API.ranks().then(r=>{const ch=JSON.stringify(r)!==JSON.stringify(RANKS);RANKS=r||{};if(ch&&!$('scores').hidden&&sSong)drawScores()}).catch(()=>{});
+  drawScores();
+}
+function drawScores(){
+  const L=$('slist');
+  const all=ORDER.flatMap(d=>['court','entier'].flatMap(v=>DIFFS.map(f=>[d,v,f])));
+  const done=all.filter(([d,v,f])=>(prog.acc[ck(d,v,f)]||0)>=70).length;
   if(!sSong){
-    const fcN=ACH.fc.filter(t=>!t.startsWith('semaine/')).length;
-    $('shead').textContent='Mes scores';$('ssub').textContent=API?`Sans-faute : ${fcN} / ${ORDER.length*6} versions`:'';
-    L.innerHTML='<div class="col">'+ORDER.map(d=>{
-      if(!decU(d))return `<button class="lock">???<small>Pas encore débloqué</small></button>`;
-      const n90=ACH.p90.filter(t=>t.startsWith(d+'/')).length;
-      return `<button data-d="${d}">${CHANTS[d]}<small>${NOMS[d]}${API&&n90>=6?' · ♛ Maître':''}</small></button>`;
-    }).join('')+'</div>';
+    const fcN=ACH.fc.filter(t=>!t.startsWith('semaine/')).length,mN=ORDER.filter(d=>ACH.p90.filter(t=>t.startsWith(d+'/')).length>=6).length;
+    $('shead').textContent='Ma progression';$('ssub').textContent='';
+    L.innerHTML=`<div class="sum"><span>Versions réussies</span><span>${done} / ${all.length}</span>`+
+      (API?`<span>Sans-faute</span><span>${fcN} / ${all.length}</span><span>Versions Maître</span><span>${mN} / ${ORDER.length}</span>`:'')+`</div>`+
+      '<div class="col">'+ORDER.map(d=>{
+        if(!decU(d))return `<button class="lock">???<small>Pas encore débloqué</small></button>`;
+        const n=['court','entier'].flatMap(v=>DIFFS.map(f=>prog.acc[ck(d,v,f)]||0)).filter(a=>a>=70).length;
+        return `<button data-d="${d}">${CHANTS[d]}<small>${n} / 6 réussies</small></button>`;
+      }).join('')+'</div>';
     return;
   }
-  const d=sSong;$('shead').innerHTML=TITRES[d];$('ssub').textContent=NOMS[d];
+  const d=sSong;$('shead').innerHTML=TITRES[d];
   const n90=ACH.p90.filter(t=>t.startsWith(d+'/')).length;
-  let h=API?`<p>${n90>=6?'♛ Version Maître obtenue':'Version Maître : '+n90+' / 6 versions à 90 %'}</p>`:'';
+  $('ssub').textContent=API?(n90>=6?'♛ Version Maître obtenue':'Version Maître : '+n90+' / 6 à 90 %'):'';
+  let h='';
   for(const v of ['court','entier']){
     h+=`<h2 class="vh">${VLAB[v]}</h2>`;
     for(const f of DIFFS){
-      const lab=FLAB(f);
-      if(!isU(d,v,f)){h+=`<div class="sc lk"><span class="sl">${lab}</span><span class="sv">verrouillé</span></div>`;continue}
-      const tk=TK(d,v,f),sc=recOf(d,v,f),a=prog.acc[ck(d,v,f)],top=TOPS[tk],crown=API&&sc>0&&top&&sc>=top.score,sf=ACH.fc.includes(tk);
-      h+=`<div class="sc"><span class="sl">${lab}${sf?' <span class="sf">SF</span>':''}</span><span class="sv">${crown?'<span class="cr">♛ </span>':''}${sc?sc.toLocaleString('fr-FR'):'0'} <small>pts</small></span>`+
-         `<span class="pc">${a!=null?a.toFixed(1)+' % de précision':''}</span>`+
-         (top&&!crown?`<span class="fr">Record de la fam's : ${top.score.toLocaleString('fr-FR')} · ${esc(top.pseudo)}</span>`:'')+`</div>`;
+      if(!isU(d,v,f)){h+=`<div class="pg lk"><span class="k">${FLAB(f)}</span><span class="acc">verrouillé</span><span></span><span></span></div>`;continue}
+      const tk=TK(d,v,f),a=prog.acc[ck(d,v,f)],sf=ACH.fc.includes(tk),cl=a==null?'':a>=90?'top':a>=70?'ok':'';
+      h+=`<div class="pg"><span class="k">${FLAB(f)}</span><span class="acc ${cl}">${a==null?'pas jouée':ACCN(a)}</span><span class="rk">${rankTxt(RANKS[tk])}</span><span class="sfb">${sf?'<span class="sf">SF</span>':''}</span></div>`;
     }
   }
-  L.innerHTML=h+(API?`<div class="legend"><span class="cr">♛</span> record de la fam's · <span class="sf">SF</span> sans-faute</div>`:'');
+  L.innerHTML=h+`<div class="legend">Précision : <span style="color:#8ff0c4">70 %</span> réussie · <span class="cr">90 %</span> compte pour la version Maître${API?' · rang dans la fam\'s · <span class="sf">SF</span> sans-faute':''}</div>`;
 }
-$('slist').addEventListener('click',e=>{const b=e.target.closest('button[data-d]');if(!b)return;sSong=b.dataset.d;showScores()});
-function scoresBack(){if(sSong){sSong=null;showScores()}else screen('home')}
+$('slist').addEventListener('click',e=>{const b=e.target.closest('button[data-d]');if(!b)return;sSong=b.dataset.d;drawScores()});
+function scoresBack(){if(sSong){sSong=null;drawScores()}else screen('home')}
 function screen(id){for(const k of ['home','menu','scores','settings','weekly','boards'])$(k).hidden=k!==id;state=id==='home'?'home':'menu'}
 const cache={};
 async function loadSong(){
