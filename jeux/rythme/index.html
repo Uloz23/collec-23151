@@ -72,6 +72,11 @@ button.week{background:#3a2a07;border-color:#ffd27a;color:#ffe9a8}
 .blist li.me{background:rgba(243,162,52,.18)}
 .blist li span.a{color:var(--dim)}
 .blist p{text-align:center}
+#bnav,#slist .col{width:100%;max-width:280px}
+#bnav button small,#slist button small{display:block;margin-top:5px;font-size:8px;color:var(--dim)}
+#slist .sf{color:#7dff9a}#slist .cr{color:#ffd27a}
+#slist td.k{white-space:nowrap}
+.legend{font-size:8px;color:var(--dim);margin-top:8px}
 .tabs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:340px}
 .tabs button{min-height:32px;padding:6px 7px;font-size:8px}
 .prog90{font-size:8px;color:#ffd27a;margin:-2px 0 6px}
@@ -111,16 +116,16 @@ button.go:disabled{opacity:.4;cursor:default}
   </div>
 
   <div class="ov" id="boards" hidden>
-    <h1>Classements</h1>
-    <div class="tabs" id="bsong"></div>
-    <div class="tabs" id="bver"></div>
-    <div class="tabs" id="bdiff"></div>
+    <h1 id="bhead">Classements</h1>
+    <p id="bsub"></p>
+    <div class="col" id="bnav"></div>
     <div id="blist" class="blist"></div>
     <button id="bback">Retour</button>
   </div>
 
   <div class="ov" id="scores" hidden>
-    <h1>Mes scores</h1>
+    <h1 id="shead">Mes scores</h1>
+    <p id="ssub"></p>
     <div id="slist"></div>
     <button id="sback">Retour</button>
   </div>
@@ -546,20 +551,33 @@ $('mok').addEventListener('click',()=>{
   else if(step==='ver'){if(DIFFS.some(f=>isU(dec,ver,f))){step='diff';showMenu()}}
   else if(isU(dec,ver,diff))play();
 });
+/* ---- Mes scores : la liste des chants, puis le détail d'un chant ---- */
+let sSong=null;
 function showScores(){
-  const fcN=ACH.fc.filter(t=>!t.startsWith('semaine/')).length;
-  $('slist').innerHTML=(API?`<h2>Sans-faute : ${fcN} / ${ORDER.length*6} versions</h2>`:'')+ORDER.map(d=>{
-    if(!decU(d))return `<h2>${NOMS[d]}</h2><table><tr><td>Pas encore débloqué</td></tr></table>`;
-    const rows=['court','entier'].flatMap(v=>DIFFS.map(f=>{
-      if(!isU(d,v,f))return `<tr><td>${v==='court'?'Courte':'Entière'} · ${f}</td><td class="v">—</td><td class="v"></td></tr>`;
-      const sc=recOf(d,v,f),a=prog.acc[ck(d,v,f)],top=TOPS[TK(d,v,f)];
-      return `<tr><td>${v==='court'?'Courte':'Entière'} · ${f}</td><td class="v">${sc?sc.toLocaleString('fr-FR'):'0'}</td><td class="v">${a!=null?a.toFixed(1)+' %':''}</td></tr>`+
-        (top?`<tr class="fam"><td colspan="3">Record de la fam's : ${top.score.toLocaleString('fr-FR')} · ${esc(top.pseudo)}</td></tr>`:'');
-    })).join('');
-    const n90=ACH.p90.filter(t=>t.startsWith(d+'/')).length;
-    return `<h2>${NOMS[d]}</h2>${API?`<div class="prog90">Version Maître : ${n90>=6?'obtenue !':n90+' / 6 versions à 90 %'}</div>`:''}<table>${rows}</table>`;
-  }).join('');
+  screen('scores');const L=$('slist');
+  if(!sSong){
+    const fcN=ACH.fc.filter(t=>!t.startsWith('semaine/')).length;
+    $('shead').textContent='Mes scores';$('ssub').textContent=API?`Sans-faute : ${fcN} / ${ORDER.length*6} versions`:'';
+    L.innerHTML='<div class="col">'+ORDER.map(d=>{
+      if(!decU(d))return `<button class="lock">???<small>Pas encore débloqué</small></button>`;
+      const n90=ACH.p90.filter(t=>t.startsWith(d+'/')).length;
+      return `<button data-d="${d}">${CHANTS[d]}<small>${API?(n90>=6?'♛ Version Maître obtenue':'Version Maître : '+n90+' / 6 à 90 %'):NOMS[d]}</small></button>`;
+    }).join('')+'</div>';
+    return;
+  }
+  const d=sSong;$('shead').innerHTML=TITRES[d];$('ssub').textContent=NOMS[d];
+  const rows=['court','entier'].flatMap(v=>DIFFS.map(f=>{
+    const lab=`${v==='court'?'Courte':'Entière'} · ${f}`;
+    if(!isU(d,v,f))return `<tr><td class="k">${lab}</td><td class="v">—</td><td class="v"></td><td></td></tr>`;
+    const tk=TK(d,v,f),sc=recOf(d,v,f),a=prog.acc[ck(d,v,f)],top=TOPS[tk];
+    const crown=API&&sc>0&&top&&sc>=top.score,sf=ACH.fc.includes(tk);
+    return `<tr><td class="k">${lab}</td><td class="v">${crown?'<span class="cr">♛ </span>':''}${sc?sc.toLocaleString('fr-FR'):'0'}</td><td class="v">${a!=null?a.toFixed(1)+' %':''}</td><td class="v">${sf?'<span class="sf">SF</span>':''}</td></tr>`+
+      (top&&!crown?`<tr class="fam"><td colspan="4">Record de la fam's : ${top.score.toLocaleString('fr-FR')} · ${esc(top.pseudo)}</td></tr>`:'');
+  })).join('');
+  L.innerHTML=`<table>${rows}</table>`+(API?`<div class="legend"><span class="cr">♛</span> record de la fam's · <span class="sf">SF</span> sans-faute</div>`:'');
 }
+$('slist').addEventListener('click',e=>{const b=e.target.closest('button[data-d]');if(!b)return;sSong=b.dataset.d;showScores()});
+function scoresBack(){if(sSong){sSong=null;showScores()}else screen('home')}
 function screen(id){for(const k of ['home','menu','scores','settings','weekly','boards'])$(k).hidden=k!==id;state=id==='home'?'home':'menu'}
 const cache={};
 async function loadSong(){
@@ -601,7 +619,7 @@ async function showWeekly(){
   const B=WEEK.board||[];
   h+=`<div class="blist">${B.length?'<ol>'+B.slice(0,10).map(r=>`<li class="${r.me?'me':''}"><span>${esc(r.pseudo)}</span><span>${fmtN(r.score)} <span class="a">${r.accuracy!=null?(+r.accuracy).toFixed(1)+' %':''}</span></span></li>`).join('')+'</ol>':'<p>Personne n\'a encore joué cette semaine : à toi l\'honneur !</p>'}</div>`;
   const myi=B.findIndex(r=>r.me);if(myi>=10)h+=`<div class="wmeta">Toi : ${myi+1}e · ${fmtN(B[myi].score)}</div>`;
-  h+=`<div class="wrules">80 % de précision : 1 booster. Meilleur score dimanche soir : 5 boosters dont un god pack (ex aequo : tous gagnants).</div>`;
+  h+=`<div class="wrules">80 % de précision : 1 booster. Meilleur score dimanche soir : 5 boosters dont un god pack.</div>`;
   $('wbox').innerHTML=h;$('wplay').hidden=false;
 }
 async function playWeekly(){
@@ -614,19 +632,28 @@ async function playWeekly(){
   }catch(e){$('wbox').insertAdjacentHTML('beforeend','<p>Erreur de chargement, réessaie</p>')}
   $('wplay').textContent='Jouer';loading=false;
 }
-/* ---- Classements de la fam's, piste par piste ---- */
-let bSel=null;
-async function showBoards(){
-  screen('boards');if(!bSel)bSel={d:dec,v:ver,f:DIFFS.includes(diff)?diff:'facile'};
-  const tab=(id,list,cur,lab)=>{$(id).innerHTML=list.map(x=>`<button data-x="${x}" class="${x===cur?'on':''}">${lab(x)}</button>`).join('')};
-  tab('bsong',ORDER,bSel.d,d=>NOMS[d]);tab('bver',['court','entier'],bSel.v,v=>v==='court'?'Courte':'Entière');tab('bdiff',DIFFS,bSel.f,f=>f[0].toUpperCase()+f.slice(1));
-  $('blist').innerHTML='<p>Chargement…</p>';
-  try{
-    const rows=await API.board(TK(bSel.d,bSel.v,bSel.f),20);
-    $('blist').innerHTML=rows.length?'<ol>'+rows.map(r=>`<li class="${r.pseudo===API.pseudo?'me':''}"><span>${esc(r.pseudo)}</span><span>${fmtN(r.score)} <span class="a">${r.accuracy!=null?(+r.accuracy).toFixed(1)+' %':''}</span></span></li>`).join('')+'</ol>':'<p>Pas encore de score sur cette version.</p>';
-  }catch(e){$('blist').innerHTML='<p>Classement indisponible (connexion ?)</p>'}
+/* ---- Classements de la fam's : chant, puis version, puis difficulté, puis le classement ---- */
+let bS={step:'song',d:'bordels',v:'court',f:'facile'};
+const VLAB={court:'Version courte',entier:'Version entière'},FLAB=f=>f[0].toUpperCase()+f.slice(1);
+function showBoards(reset){
+  if(reset)bS.step='song';
+  screen('boards');const nav=$('bnav'),L=$('blist');L.innerHTML='';nav.innerHTML='';
+  if(bS.step==='song'){$('bhead').textContent='Classements';$('bsub').textContent='Choisis un chant';
+    nav.innerHTML=ORDER.map(d=>`<button data-d="${d}">${CHANTS[d]}<small>${NOMS[d]}</small></button>`).join('');}
+  else if(bS.step==='ver'){$('bhead').innerHTML=TITRES[bS.d];$('bsub').textContent='Choisis une version';
+    nav.innerHTML=['court','entier'].map(v=>`<button data-v="${v}">${VLAB[v]}</button>`).join('');}
+  else if(bS.step==='diff'){$('bhead').innerHTML=TITRES[bS.d];$('bsub').textContent=VLAB[bS.v];
+    nav.innerHTML=DIFFS.map(f=>`<button data-f="${f}">${FLAB(f)}</button>`).join('');}
+  else{$('bhead').innerHTML=TITRES[bS.d];$('bsub').textContent=VLAB[bS.v]+' · '+bS.f;
+    L.innerHTML='<p>Chargement…</p>';
+    API.board(TK(bS.d,bS.v,bS.f),20).then(rows=>{if(bS.step!=='list')return;
+      L.innerHTML=rows.length?'<ol>'+rows.map(r=>`<li class="${r.pseudo===API.pseudo?'me':''}"><span>${esc(r.pseudo)}</span><span>${fmtN(r.score)} <span class="a">${r.accuracy!=null?(+r.accuracy).toFixed(1)+' %':''}</span></span></li>`).join('')+'</ol>':'<p>Pas encore de score sur cette version.</p>'})
+      .catch(()=>{L.innerHTML='<p>Classement indisponible (connexion ?)</p>'});}
 }
-['bsong','bver','bdiff'].forEach((id,i)=>$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;bSel[['d','v','f'][i]]=b.dataset.x;showBoards()}));
+$('bnav').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.d){bS.d=b.dataset.d;bS.step='ver'}else if(b.dataset.v){bS.v=b.dataset.v;bS.step='diff'}else if(b.dataset.f){bS.f=b.dataset.f;bS.step='list'}
+  showBoards()});
+function boardsBack(){const up={list:'diff',diff:'ver',ver:'song'}[bS.step];if(up){bS.step=up;showBoards()}else screen('home')}
 let loading=false;
 async function play(){
   weeklyMode=false;if(diff==='tres')diff='difficile';
@@ -697,7 +724,9 @@ window.__mhBack=()=>{
   if(state==='pause')return true;
   if(!$('end').hidden){$('tomenu').click();return true}
   if(!$('menu').hidden){$('mback').click();return true}
-  if(!$('scores').hidden||!$('settings').hidden||!$('weekly').hidden||!$('boards').hidden){screen('home');return true}
+  if(!$('boards').hidden){boardsBack();return true}
+  if(!$('scores').hidden){scoresBack();return true}
+  if(!$('settings').hidden||!$('weekly').hidden){screen('home');return true}
   return false;
 };
 function finish(){
@@ -824,11 +853,11 @@ $('lat').addEventListener('input',e=>{lat=+e.target.value;$('latv').textContent=
 $('again').onclick=()=>weeklyMode?playWeekly():play();
 if(API){$('hweek').hidden=false;$('hboards').hidden=false}
 $('hweek').onclick=showWeekly;$('wplay').onclick=playWeekly;$('wback').onclick=()=>screen('home');
-$('hboards').onclick=showBoards;$('bback').onclick=()=>screen('home');
+$('hboards').onclick=()=>showBoards(true);$('bback').onclick=boardsBack;
 
-$('hplay').onclick=()=>{step='songs';screen('menu');showMenu()};$('hscores').onclick=()=>{showScores();screen('scores')};$('hset').onclick=()=>{screen('settings');$('vib').textContent='Vibrations : '+(vib?'oui':'non');$('resetmsg').textContent=''};
+$('hplay').onclick=()=>{step='songs';screen('menu');showMenu()};$('hscores').onclick=()=>{sSong=null;showScores()};$('hset').onclick=()=>{screen('settings');$('vib').textContent='Vibrations : '+(vib?'oui':'non');$('resetmsg').textContent=''};
 $('mback').onclick=()=>{if(step==='diff'){step='ver';showMenu()}else if(step==='ver'){step='songs';showMenu()}else screen('home')};
-$('sback').onclick=$('tback').onclick=()=>screen('home');
+$('sback').onclick=scoresBack;$('tback').onclick=()=>screen('home');
 $('vib').onclick=()=>{vib=!vib;if(vib)buzz(150);try{localStorage.setItem('gh_vib',vib?'1':'0')}catch(e){}$('vib').textContent='Vibrations : '+(vib?'oui':'non')};
 let resetArm=false;$('reset').onclick=()=>{
   if(!resetArm){resetArm=true;$('reset').textContent='Confirmer l’effacement';$('resetmsg').textContent=API?'Les déblocages seront perdus (tes records restent au classement)':'Records et déblocages seront perdus';return}
