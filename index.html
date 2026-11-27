@@ -832,6 +832,7 @@ const ERRORS = {
   bloque: "Trop d'essais : réessaie dans 5 minutes.",
   pas_de_booster: "Tu n'as plus de booster pour l'instant.",
   pas_autorise: "Tu n'as pas (ou plus) le droit d'offrir des boosters.",
+  echange_interdit: "La version Maître et les cartes hors-série ne s'échangent pas.",
   god_bless: "Les god packs garantis ne sont pas encore activés (mise à jour n° 19).",
   session_invalide: "Ta session a expiré : reconnecte-toi.",
   joueur_introuvable: "Ce joueur n'existe plus.",
@@ -2027,6 +2028,8 @@ function gameApi(g) {
     },
     bests: () => rpc("game_my_bests", { p_token: TOKEN, p_game: g.id }),
     tops: () => rpc("game_tops", { p_game: g.id }),                // meilleur score de la fam's pour chaque piste
+    weekly: () => rpc("game_weekly", { p_token: TOKEN, p_game: g.id }),      // défi de la semaine (s'il est prévu pour ce jeu)
+    achievements: () => rpc("game_achievements", { p_token: TOKEN, p_game: g.id }),
     board: (track, limit = 20) => rpc("game_board", { p_game: g.id, p_track: String(track), p_limit: limit }),
     progress: {
       get: () => rpc("game_progress_get", { p_token: TOKEN, p_game: g.id }),

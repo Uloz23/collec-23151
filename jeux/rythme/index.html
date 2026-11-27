@@ -55,6 +55,26 @@ input[type=range]{width:100%;accent-color:var(--acc)}
 .stats{display:grid;grid-template-columns:1fr auto;gap:8px 18px;font-size:10px;text-align:left}
 .stats span:nth-child(even){text-align:right;color:var(--ink)}
 .stats span:nth-child(odd){color:var(--dim)}
+.home .col{gap:10px}
+button.week{background:#3a2a07;border-color:#ffd27a;color:#ffe9a8}
+.wbox{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;font-size:9px;line-height:1.7;text-align:center;overflow-y:auto;max-height:62%}
+.wsong{font-size:12px;color:var(--acc)}
+.wmeta{color:var(--dim)}
+.wwin{border:2px solid #ffd27a;background:rgba(255,210,122,.12);padding:10px 8px;color:#ffe9a8;animation:wglow 1.6s ease-in-out infinite alternate}
+.wwin b{display:block;font-size:13px;color:#fff3c4;margin:4px 0;font-weight:400}
+@keyframes wglow{from{box-shadow:0 0 0 rgba(255,210,122,0)}to{box-shadow:0 0 18px rgba(255,210,122,.55)}}
+.wrules{color:var(--dim);font-size:8px}
+.blist{width:100%;max-width:320px;max-height:44%;overflow-y:auto;font-size:9px;text-align:left}
+.blist ol{margin:0;padding:0;list-style:none;counter-reset:rk}
+.blist li{counter-increment:rk;display:grid;grid-template-columns:26px 1fr auto;gap:6px;padding:5px 4px;border-bottom:1px solid #26214d;color:var(--ink)}
+.blist li::before{content:counter(rk);color:var(--acc)}
+.blist li:first-child{color:#ffe066}
+.blist li.me{background:rgba(243,162,52,.18)}
+.blist li span.a{color:var(--dim)}
+.blist p{text-align:center}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:340px}
+.tabs button{min-height:32px;padding:6px 7px;font-size:8px}
+.prog90{font-size:8px;color:#ffd27a;margin:-2px 0 6px}
 #pause{position:absolute;top:4px;right:4px;min-height:0;width:44px;height:40px;padding:0;font-size:12px;background:rgba(8,10,32,.75);border:2px solid #4a4380;border-radius:6px}
 button.go:disabled{opacity:.4;cursor:default}
 </style>
@@ -68,7 +88,9 @@ button.go:disabled{opacity:.4;cursor:default}
     <div class="spacer"></div>
     <div class="col">
       <button class="go" id="hplay">Jouer</button>
-      <button id="hscores">Meilleurs scores</button>
+      <button class="week" id="hweek" hidden>🏆 Chant de la semaine</button>
+      <button id="hboards" hidden>Classements</button>
+      <button id="hscores">Mes scores</button>
       <button id="hset">Réglages</button>
     </div>
   </div>
@@ -82,8 +104,23 @@ button.go:disabled{opacity:.4;cursor:default}
     <button id="mback">Retour</button>
   </div>
 
+  <div class="ov" id="weekly" hidden>
+    <h1>Chant de la semaine</h1>
+    <div id="wbox" class="wbox"></div>
+    <div class="row"><button class="go" id="wplay">Jouer</button><button id="wback">Retour</button></div>
+  </div>
+
+  <div class="ov" id="boards" hidden>
+    <h1>Classements</h1>
+    <div class="tabs" id="bsong"></div>
+    <div class="tabs" id="bver"></div>
+    <div class="tabs" id="bdiff"></div>
+    <div id="blist" class="blist"></div>
+    <button id="bback">Retour</button>
+  </div>
+
   <div class="ov" id="scores" hidden>
-    <h1>Meilleurs scores</h1>
+    <h1>Mes scores</h1>
     <div id="slist"></div>
     <button id="sback">Retour</button>
   </div>
@@ -118,7 +155,8 @@ button.go:disabled{opacity:.4;cursor:default}
 const W=180,H=320,LX=[54,90,126],BOUND=[72,108];
 let HITY=280;
 const COL=['#e8603a','#2bc28e','#9a8cf0'],LIG=['#ffc2a6','#a8f5d8','#ddd6ff'],DRK=['#7a2410','#0d5a40','#3c3489'];
-const APP={facile:1.7,normal:1.35,difficile:1.1};
+const APP={facile:1.7,normal:1.35,difficile:1.1,tres:.95};
+const DNOM={facile:'facile',normal:'normal',difficile:'difficile',tres:'très difficile'};
 const WIN={p:.05,b:.095,o:.14};
 const JTXT={p:'Parfait',b:'Bien',o:'Juste',r:'Raté'};
 const JCOL={p:'#ffe066',b:'#8ff0c4',o:'#c9c2ff',r:'#ff6a5a'};
@@ -449,7 +487,8 @@ const COARSE=matchMedia('(pointer: coarse)').matches;
 async function syncRemote(){
   if(!API)return;
   try{
-    const [p,b,t]=await Promise.all([API.progress.get(),API.bests(),API.tops?API.tops().catch(()=>({})):{}]);
+    const [p,b,t,a]=await Promise.all([API.progress.get(),API.bests(),API.tops?API.tops().catch(()=>({})):{},API.achievements?API.achievements().catch(()=>null):null]);
+    if(a)ACH={p90:a.p90||[],fc:a.fc||[]};
     if(p&&p.u)prog={u:p.u,acc:p.acc||{}};
     prog.u[ck('bordels','court','facile')]=true;fixProg();
     BEST=b||{};TOPS=t||{};
@@ -508,7 +547,8 @@ $('mok').addEventListener('click',()=>{
   else if(isU(dec,ver,diff))play();
 });
 function showScores(){
-  $('slist').innerHTML=ORDER.map(d=>{
+  const fcN=ACH.fc.filter(t=>!t.startsWith('semaine/')).length;
+  $('slist').innerHTML=(API?`<h2>Sans-faute : ${fcN} / ${ORDER.length*6} versions</h2>`:'')+ORDER.map(d=>{
     if(!decU(d))return `<h2>${NOMS[d]}</h2><table><tr><td>Pas encore débloqué</td></tr></table>`;
     const rows=['court','entier'].flatMap(v=>DIFFS.map(f=>{
       if(!isU(d,v,f))return `<tr><td>${v==='court'?'Courte':'Entière'} · ${f}</td><td class="v">—</td><td class="v"></td></tr>`;
@@ -516,10 +556,11 @@ function showScores(){
       return `<tr><td>${v==='court'?'Courte':'Entière'} · ${f}</td><td class="v">${sc?sc.toLocaleString('fr-FR'):'0'}</td><td class="v">${a!=null?a.toFixed(1)+' %':''}</td></tr>`+
         (top?`<tr class="fam"><td colspan="3">Record de la fam's : ${top.score.toLocaleString('fr-FR')} · ${esc(top.pseudo)}</td></tr>`:'');
     })).join('');
-    return `<h2>${NOMS[d]}</h2><table>${rows}</table>`;
+    const n90=ACH.p90.filter(t=>t.startsWith(d+'/')).length;
+    return `<h2>${NOMS[d]}</h2>${API?`<div class="prog90">Version Maître : ${n90>=6?'obtenue !':n90+' / 6 versions à 90 %'}</div>`:''}<table>${rows}</table>`;
   }).join('');
 }
-function screen(id){for(const k of ['home','menu','scores','settings'])$(k).hidden=k!==id;state=id==='home'?'home':'menu'}
+function screen(id){for(const k of ['home','menu','scores','settings','weekly','boards'])$(k).hidden=k!==id;state=id==='home'?'home':'menu'}
 const cache={};
 async function loadSong(){
   const k=dec+'_'+ver;
@@ -531,9 +572,64 @@ async function loadSong(){
     cache[k]={d,b};
   }
   data=cache[k].d;buf=cache[k].b;
+  if(weeklyMode&&WEEK)data=excerpt(data);
 }
+/* ---- Chant de la semaine : un extrait d'environ une minute, pris dans la version entière ---- */
+let WEEK=null,weeklyMode=false,ACH={p90:[],fc:[]};
+function excerpt(d){
+  const b=d.beats,bars=b.filter((x,i)=>i%4===0),tgt=62;
+  let starts=bars.filter(x=>x>=4&&x<=d.duree-tgt-3);if(!starts.length)starts=[bars[0]||0];
+  const S=starts[Math.min(starts.length-1,Math.floor((+WEEK.pos||0)*starts.length))];
+  const E=Math.min(bars.find(x=>x>=S+tgt)||d.duree-1,d.duree-.5);
+  const src=d.notes[WEEK.level]||d.notes.difficile,out={};
+  out[WEEK.level]=src.filter(n=>n[0]>=S+1.2&&n[0]+(n[2]||0)<=E-2.4).map(n=>n[2]?[+(n[0]-S).toFixed(3),n[1],n[2]]:[+(n[0]-S).toFixed(3),n[1]]);
+  return {titre:d.titre,duree:+(E-S).toFixed(3),tempo:d.tempo,beats:b.filter(x=>x>=S&&x<E).map(x=>+(x-S).toFixed(3)),notes:out,_S:S};
+}
+const fmtLeft=ms=>{const m=Math.max(0,Math.round(ms/60000)),d=Math.floor(m/1440),h=Math.floor(m%1440/60),mi=m%60;return d?`${d} j ${h} h`:h?`${h} h ${mi} min`:`${mi} min`};
+const fmtN=n=>Number(n||0).toLocaleString('fr-FR');
+async function showWeekly(){
+  screen('weekly');$('wplay').hidden=true;$('wbox').innerHTML='<p>Chargement…</p>';
+  try{WEEK=await API.weekly()}catch(e){WEEK=null}
+  if(!WEEK){$('wbox').innerHTML='<p>Pas de chant de la semaine pour le moment.</p>';return}
+  const me=API.pseudo,lw=WEEK.last,wins=lw&&lw.winners||[];
+  let h='';
+  if(wins.length){
+    const mine=wins.some(w=>w.pseudo===me);
+    h+=`<div class="wwin">🏆 Gagnant${wins.length>1?'s':''} de la semaine dernière<b>${wins.map(w=>esc(w.pseudo)).join(' · ')}</b>${CHANTS[lw.song]||''} · ${fmtN(wins[0].score)} pts${mine?'<br>Bravo ! 5 boosters dont un god pack t\'attendent.':''}</div>`;
+  }
+  h+=`<div class="wsong">${CHANTS[WEEK.song]||WEEK.song}</div><div class="wmeta">${NOMS[WEEK.song]||''} · extrait d'une minute · ${DNOM[WEEK.level]||WEEK.level}<br>Fin dans ${fmtLeft(new Date(WEEK.ends_at)-Date.now())}</div>`;
+  const B=WEEK.board||[];
+  h+=`<div class="blist">${B.length?'<ol>'+B.slice(0,10).map(r=>`<li class="${r.me?'me':''}"><span>${esc(r.pseudo)}</span><span>${fmtN(r.score)} <span class="a">${r.accuracy!=null?(+r.accuracy).toFixed(1)+' %':''}</span></span></li>`).join('')+'</ol>':'<p>Personne n\'a encore joué cette semaine : à toi l\'honneur !</p>'}</div>`;
+  const myi=B.findIndex(r=>r.me);if(myi>=10)h+=`<div class="wmeta">Toi : ${myi+1}e · ${fmtN(B[myi].score)}</div>`;
+  h+=`<div class="wrules">80 % de précision : 1 booster. Meilleur score dimanche soir : 5 boosters dont un god pack (ex aequo : tous gagnants).</div>`;
+  $('wbox').innerHTML=h;$('wplay').hidden=false;
+}
+async function playWeekly(){
+  if(!WEEK||loading)return;
+  weeklyMode=true;dec=WEEK.song;ver='entier';diff=WEEK.level;loading=true;
+  try{
+    if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();
+    actx.resume();$('wplay').textContent='Chargement…';
+    await loadSong();screen('none');start();
+  }catch(e){$('wbox').insertAdjacentHTML('beforeend','<p>Erreur de chargement, réessaie</p>')}
+  $('wplay').textContent='Jouer';loading=false;
+}
+/* ---- Classements de la fam's, piste par piste ---- */
+let bSel=null;
+async function showBoards(){
+  screen('boards');if(!bSel)bSel={d:dec,v:ver,f:DIFFS.includes(diff)?diff:'facile'};
+  const tab=(id,list,cur,lab)=>{$(id).innerHTML=list.map(x=>`<button data-x="${x}" class="${x===cur?'on':''}">${lab(x)}</button>`).join('')};
+  tab('bsong',ORDER,bSel.d,d=>NOMS[d]);tab('bver',['court','entier'],bSel.v,v=>v==='court'?'Courte':'Entière');tab('bdiff',DIFFS,bSel.f,f=>f[0].toUpperCase()+f.slice(1));
+  $('blist').innerHTML='<p>Chargement…</p>';
+  try{
+    const rows=await API.board(TK(bSel.d,bSel.v,bSel.f),20);
+    $('blist').innerHTML=rows.length?'<ol>'+rows.map(r=>`<li class="${r.pseudo===API.pseudo?'me':''}"><span>${esc(r.pseudo)}</span><span>${fmtN(r.score)} <span class="a">${r.accuracy!=null?(+r.accuracy).toFixed(1)+' %':''}</span></span></li>`).join('')+'</ol>':'<p>Pas encore de score sur cette version.</p>';
+  }catch(e){$('blist').innerHTML='<p>Classement indisponible (connexion ?)</p>'}
+}
+['bsong','bver','bdiff'].forEach((id,i)=>$(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;bSel[['d','v','f'][i]]=b.dataset.x;showBoards()}));
 let loading=false;
 async function play(){
+  weeklyMode=false;if(diff==='tres')diff='difficile';
   if(!isU(dec,ver,diff))return;
   if(loading)return;loading=true;
   try{
@@ -566,8 +662,13 @@ function start(){
 // (son pas tout à fait démarré, téléphone lent à réveiller l'audio), on recale tout dès qu'elle repart.
 function schedule(){
   if(src){src.onended=null;try{src.stop()}catch(e){}}
-  src=actx.createBufferSource();src.buffer=buf;src.connect(actx.destination);
-  t0=actx.currentTime+1.6;src.start(t0);schedAt=performance.now();schedCt=actx.currentTime;readLat(true);
+  src=actx.createBufferSource();src.buffer=buf;
+  t0=actx.currentTime+1.6;
+  if(data&&data._S){ // extrait : fondu d'entrée et de sortie, arrêt à la fin de l'extrait
+    const gn=actx.createGain(),L=data.duree;src.connect(gn).connect(actx.destination);
+    gn.gain.setValueAtTime(0,t0);gn.gain.linearRampToValueAtTime(1,t0+.5);gn.gain.setValueAtTime(1,t0+L-2);gn.gain.linearRampToValueAtTime(0,t0+L);
+    src.start(t0,data._S);src.stop(t0+L+.05);
+  }else{src.connect(actx.destination);src.start(t0)}schedAt=performance.now();schedCt=actx.currentTime;readLat(true);
   src.onended=()=>{if(state==='play'||state==='pause')finish()};
 }
 let schedAt=0,schedCt=0;
@@ -594,19 +695,34 @@ window.__mhStop=()=>{stopAudio();try{actx&&actx.close()}catch(e){}};
 window.__mhBack=()=>{
   if(state==='play'){pause();return true}
   if(state==='pause')return true;
-  if(!$('end').hidden){toMenu();return true}
+  if(!$('end').hidden){$('tomenu').click();return true}
   if(!$('menu').hidden){$('mback').click();return true}
-  if(!$('scores').hidden||!$('settings').hidden){screen('home');return true}
+  if(!$('scores').hidden||!$('settings').hidden||!$('weekly').hidden||!$('boards').hidden){screen('home');return true}
   return false;
 };
 function finish(){
   stopAudio();state='end';$('pause').hidden=true;
   const tot=notes.length||1,acc=(cnt.p+cnt.b*.7+cnt.o*.4)/tot*100;
+  const det={combo:maxc,monome:monoMax,p:cnt.p,b:cnt.b,o:cnt.o,r:cnt.r,notes:notes.length};
+  if(weeklyMode&&WEEK){
+    $('etitle').textContent='Chant de la semaine';$('escore').textContent=score.toLocaleString('fr-FR');
+    $('estats').innerHTML=[['Chant',CHANTS[dec]],['Difficulté',DNOM[diff]],['Précision',acc.toFixed(1)+' %'],['Combo max',maxc],['Monôme max',monoMax+' gadz'],
+      [JTXT.p,cnt.p],[JTXT.b,cnt.b],[JTXT.o,cnt.o],[JTXT.r,cnt.r]].map(([a,b])=>`<span>${a}</span><span>${b}</span>`).join('')+(API?`<span>Semaine</span><span id="efam">…</span>`:'');
+    $('end').hidden=false;
+    if(API)API.submit(WEEK.track,score,+acc.toFixed(2),det).then(r=>{const el=$('efam');if(el)el.textContent=r.test?'compte test : non enregistré':r.rank?(r.rank===1?'1er':r.rank+'e')+(r.record?' · ton record':''):'—'})
+      .catch(e=>{const el=$('efam');if(el)el.textContent=/semaine_finie/.test(e&&e.message)?'semaine terminée : nouveau chant !':'score non envoyé (connexion ?)'});
+    return;
+  }
   const rec=score>best();
   if(rec&&!API){try{localStorage.setItem(bkey(),score)}catch(e){}}
   if(API){
     const tk=TK(dec,ver,diff);if(rec)BEST[tk]={score,accuracy:+acc.toFixed(2)};
-    API.submit(tk,score,+acc.toFixed(2),{combo:maxc,monome:monoMax,p:cnt.p,b:cnt.b,o:cnt.o,r:cnt.r,notes:notes.length}).then(r=>{
+    API.submit(tk,score,+acc.toFixed(2),det).then(r=>{
+      if(acc>=90&&!ACH.p90.includes(tk))ACH.p90.push(tk);if(cnt.r===0&&notes.length&&!ACH.fc.includes(tk))ACH.fc.push(tk);
+      for(const a of r.achievements||[]){
+        const txt=a==='sans-faute'?'Carte hors-série gagnée : le sans-faute complet !':'Version Maître débloquée : '+(CHANTS[a.split(':')[1]]||'');
+        $('estats').insertAdjacentHTML('beforeend',`<span style="color:#ffd27a">Récompense</span><span style="color:#ffd27a">${txt}</span>`);API.toast('🏅 '+txt);
+      }
       const el=$('efam');if(!el)return;
       el.textContent=r.test?'compte test : non enregistré':r.rank?(r.rank===1?'1er':r.rank+'e')+(r.record?' · nouveau record':''):'—';
       if(r.rank===1&&!r.test)TOPS[tk]={score:r.best,pseudo:API.pseudo};
@@ -631,7 +747,9 @@ function finish(){
 }
 function pause(){if(state!=='play')return;state='pause';actx.suspend();$('paused').hidden=false;}
 function resume(){if(state!=='pause')return;actx.resume();state='play';$('paused').hidden=true;}
-function toMenu(){stopAudio();if(actx)actx.resume();$('paused').hidden=true;$('end').hidden=true;$('pause').hidden=true;step='diff';screen('menu');showMenu();}
+function toMenu(){stopAudio();if(actx)actx.resume();$('paused').hidden=true;$('end').hidden=true;$('pause').hidden=true;
+  if(weeklyMode){weeklyMode=false;showWeekly();return}
+  step='diff';screen('menu');showMenu();}
 
 function spark(x,y,n,v,cols){
   for(let i=0;i<n;i++){
@@ -649,7 +767,7 @@ function shrinkMono(){
     leavers.push({id:i,x:q[0],y:q[1],h:q[2],vx:side*sp*Math.cos(a),vy:sp*Math.sin(a)*.7+(Math.random()-.5)*20,a:0,life:.9+Math.random()*.5});
   }
 }
-window.__mhDbg={grow:n=>{addJoins(mono,mono+n);mono+=n},shrink:()=>shrinkMono(),combo:n=>{combo=n}}; // essais automatiques
+window.__mhDbg={grow:n=>{addJoins(mono,mono+n);mono+=n},shrink:()=>shrinkMono(),combo:n=>{combo=n},data:()=>data,notes:()=>notes}; // essais automatiques
 function buzz(ms){if(!vib)return;let ok=false;try{ok=navigator.vibrate&&navigator.vibrate(ms)}catch(e){}if(!ok)try{parent!==window&&parent.navigator.vibrate&&parent.navigator.vibrate(ms)}catch(e){}}
 function judge(k,l,n){
   cnt[k]++;
@@ -703,7 +821,10 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
 
 
 $('lat').addEventListener('input',e=>{lat=+e.target.value;$('latv').textContent=lat+' ms';try{localStorage.setItem('gh_lat',lat)}catch(err){}});
-$('again').onclick=play;
+$('again').onclick=()=>weeklyMode?playWeekly():play();
+if(API){$('hweek').hidden=false;$('hboards').hidden=false}
+$('hweek').onclick=showWeekly;$('wplay').onclick=playWeekly;$('wback').onclick=()=>screen('home');
+$('hboards').onclick=showBoards;$('bback').onclick=()=>screen('home');
 
 $('hplay').onclick=()=>{step='songs';screen('menu');showMenu()};$('hscores').onclick=()=>{showScores();screen('scores')};$('hset').onclick=()=>{screen('settings');$('vib').textContent='Vibrations : '+(vib?'oui':'non');$('resetmsg').textContent=''};
 $('mback').onclick=()=>{if(step==='diff'){step='ver';showMenu()}else if(step==='ver'){step='songs';showMenu()}else screen('home')};
