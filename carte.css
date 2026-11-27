@@ -117,3 +117,14 @@
 
 /* Carte hors de l'écran : animations en pause */
 .card.pause *, .card.pause *::before, .card.pause *::after { animation-play-state: paused !important; }
+
+/* Version Maître (gagnée dans Monome Hero) : pleine carte, cadre de feu qui ondule, étiquette « Maître » */
+.v-maitre { --c-edge: #ffd27a; --c-bar1: #fff3d6; --c-bar2: #f3a234; --c-num: #ffe9a8;
+  box-shadow: 0 10px 24px -10px rgba(0,0,0,.8), 0 0 0 1px rgba(255,210,122,.8), 0 0 18px -2px rgba(255,120,40,.75); }
+.v-maitre .card-in { background: linear-gradient(115deg, #7a2410, #e8603a, #ffd27a, #e8603a, #7a2410); isolation: isolate; overflow: hidden; }
+.v-maitre .card-in::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: calc(100% + 70cqw); z-index: -1; pointer-events: none; will-change: transform;
+  background: repeating-linear-gradient(115deg, #7a2410 0, #e8603a 15cqw, #ffd27a 30cqw, #ff9a3a 45cqw, #7a2410 60cqw); animation: irisx 3s linear infinite; }
+.v-maitre .frame { border-color: rgba(255,236,190,.95); }
+.maitre-tag { position: absolute; z-index: 6; top: 15cqw; right: -1cqw; padding: .9cqw 3.2cqw .9cqw 3.6cqw; font: 700 3.4cqw/1 var(--f-label, sans-serif); letter-spacing: .18em; text-transform: uppercase;
+  color: #2a1606; background: linear-gradient(#ffe9a8, #f3a234 60%, #c2551f); border-radius: 1.6cqw 0 0 1.6cqw; box-shadow: 0 .6cqw 2cqw rgba(0,0,0,.5), 0 0 3cqw rgba(255,150,50,.6); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .v-maitre .card-in::after { animation: none; } }

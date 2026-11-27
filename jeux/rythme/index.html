@@ -767,7 +767,7 @@ function shrinkMono(){
     leavers.push({id:i,x:q[0],y:q[1],h:q[2],vx:side*sp*Math.cos(a),vy:sp*Math.sin(a)*.7+(Math.random()-.5)*20,a:0,life:.9+Math.random()*.5});
   }
 }
-window.__mhDbg={grow:n=>{addJoins(mono,mono+n);mono+=n},shrink:()=>shrinkMono(),combo:n=>{combo=n},data:()=>data,notes:()=>notes}; // essais automatiques
+window.__mhDbg={grow:n=>{addJoins(mono,mono+n);mono+=n},shrink:()=>shrinkMono(),combo:n=>{combo=n},data:()=>data,notes:()=>notes,photo:v=>{PHOTO=v;notes.length=0}}; // essais automatiques
 function buzz(ms){if(!vib)return;let ok=false;try{ok=navigator.vibrate&&navigator.vibrate(ms)}catch(e){}if(!ok)try{parent!==window&&parent.navigator.vibrate&&parent.navigator.vibrate(ms)}catch(e){}}
 function judge(k,l,n){
   cnt[k]++;
@@ -928,7 +928,7 @@ function gDir(i,P){
 }
 /* ---- Arrivées et départs du monôme : chaque nouveau gadz arrive en marchant depuis le bord le plus proche,
         et ceux qui quittent le monôme sur un raté s'éloignent en se dispersant ---- */
-let G_ANIM=false;const joins=new Map(),lastG=[];let leavers=[];
+let G_ANIM=false,PHOTO=false;const joins=new Map(),lastG=[];let leavers=[];
 const clk=()=>performance.now()/1000;
 function addJoins(from,to){const t=clk();for(let i=from;i<to;i++)joins.set(i,{t,sx:null,sy:null,d:.8})}
 function walkDir(dx,dy){return Math.abs(dy)>Math.abs(dx)*.7?(dy>0?'f':'b'):'s'}
@@ -1346,12 +1346,12 @@ function loop(ts){
       g.fillStyle='rgba(255,176,64,'+(.08+heat*.12+(t>0?env:0)*Math.min(1,combo/20)*.15).toFixed(3)+')';
       for(let r=24+heat*30;r>4;r-=8){g.beginPath();g.arc(180,368,r,0,7);g.fill()}
     }
-    g.save();g.scale(2,2);
+    if(!PHOTO){g.save();g.scale(2,2);
     for(let i=0;i<3;i++){
       g.fillStyle='rgba(6,8,28,.38)';g.fillRect(LX[i]-13,0,26,HITY+10);
       if(beam[i]>0){g.globalAlpha=beam[i]*.45;g.fillStyle=COL[i];g.fillRect(LX[i]-10,0,20,HITY);g.globalAlpha=1}
     }
-    g.restore();
+    g.restore();}
     G_ANIM=true;
     if(dec==='bordels')frontB(t,pulse,env);
     if(dec==='chalons'){if(mono>0)frontCB(t,pulse);if(t>0)logoFX(t,ph,env)}
@@ -1359,6 +1359,7 @@ function loop(ts){
     if(dec==='cluns'){rosaceFX(t>0?t:0,ph,env);if(mono>0)frontKB(t,pulse)} // la rosace est sur la façade : le monôme passe devant
     if(dec==='birse'){statueFX(t>0?t:0,ph,env);if(mono>0)frontSB(t,pulse)}
     drawLeavers(state==='play'?dt:0);G_ANIM=false;
+    if(PHOTO){g.restore();g.restore();requestAnimationFrame(loop);return} // image de carte : décor seul, sans notes ni affichage
 
     g.save();g.scale(2,2);
     g.fillStyle=pulse?'#ffe2a0':'#b89a70';g.fillRect(28,HITY,124,1);

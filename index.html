@@ -140,7 +140,7 @@ button { font: inherit; color: inherit; }
 .legend .rarity { width: 40px; }
 
 </style>
-<link rel="stylesheet" href="carte.css?v=5">
+<link rel="stylesheet" href="carte.css?v=6">
 <style>
 /* ---------- Booster (paquet) ---------- */
 .pack { container-type: inline-size; position: relative; width: min(60vw, 250px); aspect-ratio: 63 / 100; cursor: pointer; border: 0; padding: 0; background: none; }
@@ -332,6 +332,7 @@ body { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
 .login-err { margin: 4px 0 0; min-height: 20px; color: #ff9b8f; font-size: 15px; }
 .login-note { margin: 4px 0 0; font-size: 14px; color: var(--muted); text-align: center; }
 .board { display: grid; gap: 10px; }
+.badge.b-maitre { background: linear-gradient(#ffe9a8, #f3a234 60%, #c2551f); color: #2a1606; }
 /* ---------- Jeux ---------- */
 .games-teaser { margin: 0; min-height: 50vh; display: grid; place-items: center; font-family: var(--f-gadz); font-size: clamp(44px, 13vw, 88px); color: var(--gold-soft); text-shadow: 0 4px 20px rgba(0,0,0,.6); }
 .games-full { display: grid; gap: 20px; }
@@ -750,7 +751,7 @@ html.apercu body > :not(#apercu):not(script) { display: none !important; }
   add(`écran ${screen.width}×${screen.height} ×${devicePixelRatio} · ${navigator.userAgent.match(/(OPR|Edg|Chrome|Firefox)\/[\d.]+/g)?.join(" ") || ""}`);
 })();
 </script>
-<script src="carte.js?v=6"></script>
+<script src="carte.js?v=7"></script>
 <script>
 (() => {
 /* ================= Données : tout vient de la base Supabase ================= */
@@ -762,14 +763,14 @@ try { TOKEN = localStorage.getItem(TOKEN_KEY); } catch (e) {}
 const saveToken = t => { TOKEN = t; try { t ? localStorage.setItem(TOKEN_KEY, t) : localStorage.removeItem(TOKEN_KEY); } catch (e) {} };
 
 let EDITION = "2026";
-let CARDS = [];
+let CARDS = [], HSCARDS = [];
 const TYPES = ["Gadz", "Tabagn's", "Chant", "Trad's", "Manip'"];
 const RORDER = ["commune", "peu-commune", "rare", "mythique"];
 // Les Gadz ont leur propre niveau, hors classement : tous à égalité
 const RLABEL = { "gadz": "Gadz", "commune": "Commune", "peu-commune": "Peu commune", "rare": "Rare", "mythique": "Mythique" };
 const RANK = { "commune": 0, "peu-commune": 1, "gadz": 1, "rare": 2, "mythique": 3 };
 const VORDER = ["normale", "brillante", "textless", "doree"];
-const VLABEL = { normale: "Normale", brillante: "Brillante", textless: "Full art", doree: "Dorée" };
+const VLABEL = { normale: "Normale", brillante: "Brillante", textless: "Full art", doree: "Dorée", maitre: "Maître" };
 const score = p => RANK[p.card.rarity] * 10 + (p.card.rarity === "gadz" ? 5 : 0) + VORDER.indexOf(p.variant) * 12;
 
 const media = path => !path ? null : /^(https?|data|blob):/.test(path) ? path : `${CFG.url}/storage/v1/object/public/${CFG.bucket}/${path}`;
@@ -795,13 +796,17 @@ async function loadCards() {
   if (st && st.data && Array.isArray(st.data.trade_groups)) TRADE_GROUPS = st.data.trade_groups;
   if (st && st.data && Array.isArray(st.data.trade_free_variants)) TRADE_FREE = st.data.trade_free_variants;
   // Une carte dépubliée dans l'admin disparaît pour les joueurs (album, compteurs, échanges), même si quelqu'un l'a déjà
-  CARDS = cards.filter(c => c.published !== false).map(mapCard);
-  CARDS = sortCards(CARDS); CARDS.forEach((c, i) => { c.num = i + 1; });
+  // Les cartes hors-série (gagnées dans les jeux) sont à part : ni dans les boosters, ni dans les totaux
+  const pub = cards.filter(c => c.published !== false).map(mapCard);
+  HSCARDS = pub.filter(c => c.horsSerie);
+  CARDS = sortCards(pub.filter(c => !c.horsSerie)); CARDS.forEach((c, i) => { c.num = i + 1; });
+  applyMaitre();
 }
 function mapCard(c) {
   return ({
     id: c.id, name: c.name.replace(/\s*\/\/\s*/g, " "), nameRaw: c.name, viscrit: !!c.viscrit, type: c.type, sub: c.sub || "", colors: { bg: /^#[0-9a-f]{6}$/i.test(c.color_bg || "") ? c.color_bg : null, fg: /^#[0-9a-f]{6}$/i.test(c.color_fg || "") ? c.color_fg : null }, kind: (c.kind || "").trim(), fams: c.fams || "", rarity: c.rarity,
     art: c.art === "bordels" ? "bordels" : ({ "Gadz": "gadz", "Trad's": "trad", "Chant": "chant", "Manip'": "manip", "Tabagn's": "tabagn" }[c.type] || c.art || "trad"), hue: c.hue ?? 30, text: c.text || "",
+    horsSerie: !!c.hors_serie,
     photo: (c.photo_normale || c.photo_textless) ? { normale: media(c.photo_normale || c.photo_textless), textless: media(c.photo_textless || c.photo_normale) } : null,
     audio: (c.audio_normale || c.audio_textless || c.audio_doree) ? { normale: media(c.audio_normale || c.audio_textless), textless: media(c.audio_textless), doree: media(c.audio_doree) } : null
   });
@@ -822,6 +827,17 @@ let peek = null; // album d'un autre joueur, en lecture seule
 const OWN = () => peek ? peek.owned : state.owned;
 const ownedCount = (id, o = OWN()) => VORDER.reduce((s, v) => s + (o[id + ":" + v] || 0), 0);
 const ownedVariants = id => VORDER.filter(v => OWN()[id + ":" + v]);
+// Version Maître (gagnée dans Monome Hero) : à part des 4 versions classiques, jamais échangée ni comptée
+const hasMaitre = id => OWN()[id + ":maitre"] || 0;
+const bestVariant = id => hasMaitre(id) ? "maitre" : ownedVariants(id).slice(-1)[0];
+function applyMaitre() {
+  let changed = false;
+  (GAMES || []).forEach(g => Object.entries((g.settings && g.settings.maitre) || {}).forEach(([song, id]) => {
+    const c = CARDS.find(x => x.id === +id); const img = `jeux/${g.id}/maitre/${song}.jpg`;
+    if (c && c.maitreImg !== img) { c.maitreImg = img; changed = true; }
+  }));
+  return changed;
+}
 
 const ERRORS = {
   pseudo_pris: "Ce pseudo est déjà pris. Si c'est le tien, passe par « J'ai déjà un compte ».",
@@ -883,7 +899,7 @@ const $ = id => document.getElementById(id);
 let filter = "Tous";   // type
 let rfilter = null;    // rareté
 let vfilter = null;    // version : avec un filtre de version, on ne compte et n'affiche que les cartes possédées dans cette version
-const hasIt = id => vfilter ? (OWN()[id + ":" + vfilter] || 0) : ownedCount(id);
+const hasIt = id => vfilter ? (OWN()[id + ":" + vfilter] || 0) : ownedCount(id) + hasMaitre(id);
 const RARITY_ORDER = ["gadz", "commune", "peu-commune", "rare", "mythique"];
 // Trois menus déroulants (type, rareté, version) au lieu d'une rangée de boutons par critère
 function renderFilters() {
@@ -906,7 +922,7 @@ function renderFilters() {
     [[null, "Toutes"], ...RARITY_ORDER.filter(r => byT.some(c => c.rarity === r)).map(r => [r, `${RLABEL[r]} ${count(byT.filter(c => c.rarity === r))}`])],
     v => { rfilter = v; });
   menu("Version", vfilter,
-    [[null, "Toutes"], ...[["brillante", "Brillante"], ["textless", "Full art"], ["doree", "Dorée"]].map(([v, l]) => [v, `${l} ${CARDS.filter(c => OWN()[c.id + ":" + v]).length}`])],
+    [[null, "Toutes"], ...[["brillante", "Brillante"], ["textless", "Full art"], ["doree", "Dorée"], ...(CARDS.some(c => c.maitreImg) ? [["maitre", "Maître"]] : [])].map(([v, l]) => [v, `${l} ${CARDS.filter(c => OWN()[c.id + ":" + v]).length}`])],
     v => { vfilter = v; });
   if (filter !== "Tous" || rfilter || vfilter) {
     const r = document.createElement("button"); r.type = "button"; r.className = "reset"; r.textContent = "✕ Tout afficher";
@@ -939,13 +955,12 @@ function renderAlbum() {
       s.innerHTML = `<b>${pad(card.num)}</b><span>${esc(card.type)}</span>`;
       t.appendChild(s);
     } else {
-      const vs = ownedVariants(card.id);
-      t.appendChild(cardEl(card, vfilter || vs[vs.length - 1]));
+      t.appendChild(cardEl(card, vfilter || bestVariant(card.id)));
       t.setAttribute("aria-label", `${card.name}, possédée ${n} fois`);
       const b = document.createElement("div"); b.className = "badges";
       // Une pastille par variante possédée (avec le nombre), puis le total
       const o = OWN(), tot = ownedCount(card.id);
-      [["brillante", "b-bri", "✦"], ["textless", "b-fa", "FA"], ["doree", "b-gold", "★"]].forEach(([v, cls, ico]) => {
+      [["brillante", "b-bri", "✦"], ["textless", "b-fa", "FA"], ["doree", "b-gold", "★"], ["maitre", "b-maitre", "♛"]].forEach(([v, cls, ico]) => {
         const k = o[card.id + ":" + v] || 0;
         if (k) b.innerHTML += `<span class="badge ${cls}" title="${VLABEL[v]}">${ico} ${k}</span>`;
       });
@@ -957,6 +972,21 @@ function renderAlbum() {
     }
     a.appendChild(t);
   });
+  // Hors-série : affiché sans filtre ; les cartes pas encore gagnées restent mystérieuses
+  if (HSCARDS.length && filter === "Tous" && !rfilter && !vfilter) {
+    const h = document.createElement("h3"); h.className = "album-sep";
+    h.innerHTML = `Hors-série <small>${HSCARDS.filter(c => ownedCount(c.id) > 0).length} / ${HSCARDS.length}</small>`;
+    a.appendChild(h);
+    HSCARDS.forEach(card => {
+      const t = document.createElement("button"); t.type = "button"; t.className = "tile";
+      if (!(ownedCount(card.id) > 0)) {
+        t.classList.add("missing"); t.disabled = true; t.setAttribute("aria-label", "Carte hors-série à gagner");
+        t.appendChild(backEl());
+        const s = document.createElement("div"); s.className = "slot-num"; s.innerHTML = `<b>?</b><span>Hors-série</span>`; t.appendChild(s);
+      } else { t.appendChild(cardEl(card, ownedVariants(card.id).slice(-1)[0])); t.onclick = () => openViewer(card); }
+      a.appendChild(t);
+    });
+  }
 }
 function renderProgress() {
   const have = CARDS.filter(c => ownedCount(c.id) > 0).length;
@@ -1395,8 +1425,7 @@ $("open-btn").addEventListener("click", () => { renderAll(); startOpening(); });
 /* ================= Visionneuse ================= */
 let viewing = null;
 function openViewer(card, variant) {
-  const vs = ownedVariants(card.id);
-  viewing = { card, variant: variant || vs[vs.length - 1] };
+  viewing = { card, variant: variant || bestVariant(card.id) };
   renderViewer();
   document.body.style.overflow = "hidden";
   $("viewer").hidden = false;
@@ -1405,9 +1434,9 @@ function openViewer(card, variant) {
 function renderViewer() {
   const { card, variant } = viewing, holder = $("v-card");
   holder.innerHTML = ""; holder.appendChild(cardEl(card, variant));
-  $("v-num").textContent = `${pad(card.num)} / ${pad(CARDS.length)} · ${RLABEL[card.rarity]}`;
+  $("v-num").textContent = card.horsSerie ? "Hors-série" : `${pad(card.num)} / ${pad(CARDS.length)} · ${RLABEL[card.rarity]}`;
   const tabs = $("v-tabs"); tabs.innerHTML = "";
-  VORDER.forEach(v => {
+  [...VORDER, ...(card.maitreImg ? ["maitre"] : [])].forEach(v => {
     const n = OWN()[card.id + ":" + v] || 0;
     const b = document.createElement("button");
     b.type = "button"; b.className = "chip"; b.setAttribute("aria-pressed", String(v === variant));
@@ -1422,7 +1451,7 @@ function renderViewer() {
     ? `${peek.pseudo} l'a ${total} fois · ${!mineN ? "tu ne l'as pas encore !" : !mineV ? `tu l'as, mais pas en ${VLABEL[variant].toLowerCase()}` : `tu l'as aussi (×${mineN})`}`
     : `Possédée ${total} fois · incline la carte pour voir le reflet`;
   $("v-audio").hidden = !hasAudio(card);
-  $("v-trade").hidden = !peek || state.isTest;
+  $("v-trade").hidden = !peek || state.isTest || variant === "maitre" || card.horsSerie;
   const manque = !peek && !state.isTest && ownedCount(card.id, state.owned) > 0 ? VORDER.filter(v => !(state.owned[card.id + ":" + v] > 0)) : [];
   $("v-seek").hidden = !manque.length;
   $("v-seek").innerHTML = manque.map(v => `<button class="btn-ghost" type="button" data-v="${v}">🔍 Qui a la ${VLABEL[v].toLowerCase()} ?</button>`).join("");
@@ -1975,7 +2004,7 @@ async function loadGames(force) {
   if (!gamesLoading) gamesLoading = rpc("games_list", { p_token: TOKEN })
     .then(r => { GAMES = Array.isArray(r) && r.length ? r : GAMES_TEASER; })
     .catch(() => { GAMES = GAMES_TEASER; })
-    .finally(() => { gamesLoading = null; renderGamesDot(); });
+    .finally(() => { gamesLoading = null; renderGamesDot(); if (applyMaitre()) { renderFilters(); renderAlbum(); } });
   await gamesLoading; return GAMES;
 }
 // Tant qu'aucun jeu n'est jouable, l'onglet s'appelle « À venir » et n'affiche que « Tu verras » (sauf pour les comptes test)

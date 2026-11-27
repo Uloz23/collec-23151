@@ -218,6 +218,7 @@ td.num { font-variant-numeric: tabular-nums; }
       </div>
       <label for="e-text">Texte (facultatif, 110 caractères max)<textarea id="e-text" rows="2" maxlength="140"></textarea></label>
       <label class="check"><input type="checkbox" id="e-pub"> Publiée (visible dans l'album et dans les boosters)</label>
+      <label class="check"><input type="checkbox" id="e-hs"> Hors-série : jamais dans les boosters ni dans les échanges, gagnée dans les jeux (section à part de l'album)</label>
       <div class="row"><button class="btn primary" id="e-save" type="button">Enregistrer</button><button class="btn danger" id="e-del" type="button">Supprimer la carte</button></div>
       <p class="status" id="e-status" role="status"></p>
 
@@ -754,7 +755,7 @@ function openEditor(c) {
   $("e-id").value = c.id; $("e-id").disabled = !c._new;
   $("e-name").value = c.name; $("e-type").value = c.type; $("e-rarity").value = c.rarity;
   $("e-sub").value = c.sub || ""; $("e-kind").value = c.kind || ""; $("e-visc").checked = !!c.viscrit;
-  setColor("e-cbg", c.color_bg, "#4a2a3a"); setColor("e-cfg", c.color_fg, "#f1dfae"); colorInfo(); $("e-fams").value = c.fams || ""; $("e-text").value = c.text || ""; $("e-pub").checked = !!c.published;
+  setColor("e-cbg", c.color_bg, "#4a2a3a"); setColor("e-cfg", c.color_fg, "#f1dfae"); colorInfo(); $("e-fams").value = c.fams || ""; $("e-text").value = c.text || ""; $("e-pub").checked = !!c.published; $("e-hs").checked = !!c.hors_serie;
   $("e-del").hidden = !!c._new; say($("e-status"), "");
   showMedia(); window.scrollTo(0, 0);
 }
@@ -768,7 +769,7 @@ $("e-cdef").onclick = () => { setColor("e-cbg", null, "#4a2a3a"); setColor("e-cf
 let NUMS = {}, NTOTAL = 0, previewT = null, cropShot = null;
 function sendPreview() {
   const fr = $("e-preview"); if (!current || !fr || !fr.contentWindow) return;
-  const card = { ...current, viscrit: $("e-visc").checked, id: +$("e-id").value || current.id, name: $("e-name").value.trim() || "Sans nom", type: $("e-type").value, rarity: $("e-rarity").value,
+  const card = { ...current, viscrit: $("e-visc").checked, hors_serie: $("e-hs").checked, id: +$("e-id").value || current.id, name: $("e-name").value.trim() || "Sans nom", type: $("e-type").value, rarity: $("e-rarity").value,
     sub: $("e-sub").value.trim(), kind: $("e-kind").value.trim(), color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), fams: $("e-fams").value.trim(), text: $("e-text").value.trim(), art: current.art === "bordels" ? "bordels" : (ART[$("e-type").value] || "trad"), hue: current.hue ?? 30 };
   if (cropShot) { if (cropShot.variant === "normale") card.photo_normale = cropShot.url; else card.photo_textless = cropShot.url; }
   fr.contentWindow.postMessage({ type: "apercu", card, num: NUMS[current.id] || card.id, total: Math.max(NTOTAL, 1) }, location.origin);
@@ -780,7 +781,7 @@ window.addEventListener("message", e => {
   if (e.data.type === "apercu-taille") $("e-preview").style.height = Math.min(Math.max(e.data.h, 200), 1400) + "px";
 });
 ["e-name", "e-type", "e-rarity", "e-sub", "e-kind", "e-fams", "e-text", "e-id", "e-visc"].forEach(id => $(id).addEventListener("input", queuePreview));
-$("e-visc").addEventListener("change", queuePreview);
+$("e-visc").addEventListener("change", queuePreview); $("e-hs").addEventListener("change", queuePreview);
 function showMedia() {
   queuePreview();
   const c = current;
@@ -792,7 +793,9 @@ $("e-close").onclick = () => { pendingProp = null; $("editor").hidden = true; $(
 const ART = { "Gadz": "gadz", "Trad's": "trad", "Chant": "chant", "Manip'": "manip", "Tabagn's": "tabagn" };
 $("e-save").onclick = async () => {
   const row = { id: +$("e-id").value, name: $("e-name").value.trim(), type: $("e-type").value, rarity: $("e-rarity").value,
-    sub: $("e-sub").value.trim() || null, color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), kind: $("e-type").value === "Gadz" ? ($("e-kind").value.trim() || null) : null, viscrit: $("e-type").value === "Gadz" && !$("e-kind").value.trim() && $("e-visc").checked, fams: $("e-fams").value.trim() || null, text: $("e-text").value.trim(), published: $("e-pub").checked, updated_at: new Date().toISOString() };
+    sub: $("e-sub").value.trim() || null, color_bg: colorOf("e-cbg"), color_fg: colorOf("e-cfg"), kind: $("e-type").value === "Gadz" ? ($("e-kind").value.trim() || null) : null, viscrit: $("e-type").value === "Gadz" && !$("e-kind").value.trim() && $("e-visc").checked, fams: $("e-fams").value.trim() || null, text: $("e-text").value.trim(), published: $("e-pub").checked, hors_serie: $("e-hs").checked, updated_at: new Date().toISOString() };
+  // Sans la mise à jour n° 25, la colonne « hors_serie » n'existe pas : on ne l'envoie que si elle sert
+  if (!("hors_serie" in current) && !row.hors_serie) delete row.hors_serie;
   // Sans la mise à jour n° 18, la colonne « viscrit » n'existe pas : on ne l'envoie que si elle sert
   if (!("viscrit" in current) && !row.viscrit) delete row.viscrit;
   if (!row.name) return say($("e-status"), "Donne un nom à la carte.", false);
@@ -802,7 +805,7 @@ $("e-save").onclick = async () => {
   if (current._new) row.hue = Math.floor(Math.random() * 360);
   const q = current._new ? SB.from("cards").insert(row).select().single() : SB.from("cards").update(row).eq("id", row.id).select().single();
   const { data, error } = await q;
-  if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message.includes("viscrit") ? "il manque la mise à jour n° 18 dans Supabase (case Viscrit)." : error.message.includes("color_") ? "il manque la mise à jour n° 5 dans Supabase." : error.message.includes("kind") ? "il manque la mise à jour n° 4 dans Supabase." : error.message), false);
+  if (error) return say($("e-status"), "Erreur : " + (error.message.includes("duplicate") ? "ce numéro est déjà pris." : error.message.includes("viscrit") ? "il manque la mise à jour n° 18 dans Supabase (case Viscrit)." : error.message.includes("hors_serie") ? "il manque la mise à jour n° 25 dans Supabase (case Hors-série)." : error.message.includes("color_") ? "il manque la mise à jour n° 5 dans Supabase." : error.message.includes("kind") ? "il manque la mise à jour n° 4 dans Supabase." : error.message), false);
   current = data;
   // On met la liste à jour tout de suite : la prochaine « Nouvelle carte » prendra le numéro suivant
   const ix = cards.findIndex(c => c.id === data.id); if (ix >= 0) cards[ix] = data; else cards.push(data); renderCards();

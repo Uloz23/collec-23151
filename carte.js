@@ -63,16 +63,16 @@ const pauseIO = "IntersectionObserver" in window ? new IntersectionObserver(es =
 function cardEl(card, variant = "normale") {
   const el = document.createElement("div");
   // Les dorées sont aussi en pleine carte (mise en page textless + cadre or)
-  const full = variant === "textless" || variant === "doree";
-  el.className = `card r-${card.rarity} v-${variant}${variant === "doree" ? " v-textless" : ""}`;
+  const full = variant === "textless" || variant === "doree" || variant === "maitre";
+  el.className = `card r-${card.rarity} v-${variant}${variant === "doree" || variant === "maitre" ? " v-textless" : ""}${card.horsSerie ? " hors-serie" : ""}`;
   const u = ++uidc;
   el.innerHTML = `<div class="card-in"><div class="frame">
     <div class="bar top"><span class="name${nameSize(card.nameRaw || card.name)}">${nameHTML(card.nameRaw || card.name)}</span></div>
-    <div class="art">${photoOf(card) ? `<img src="${full && photoOf(card).textless ? photoOf(card).textless : photoOf(card).normale}" alt="">` : ART[card.art](u, card.hue, { bg: card.colors.bg, fg: card.colors.fg })}</div>
+    <div class="art">${variant === "maitre" && card.maitreImg ? `<img src="${esc(card.maitreImg)}" alt="">` : photoOf(card) ? `<img src="${full && photoOf(card).textless ? photoOf(card).textless : photoOf(card).normale}" alt="">` : ART[card.art](u, card.hue, { bg: card.colors.bg, fg: card.colors.fg })}</div>
     <div class="bar mid"><span class="type">${hasAudio(card) ? "♪ " : ""}${card.kind ? esc(card.type) + " – " + esc(card.kind) : esc(card.type) + (card.sub ? " · " + esc(card.sub) : "")}</span><span class="rarity rl-${card.rarity}" role="img" aria-label="${RLABEL[card.rarity]}"></span></div>
     ${textboxHTML(card)}
-    <div class="numbering"><span>${card.fams ? esc(card.fams) : "23-151"}</span><span>${pad(card.num || card.id)} / ${pad(CARDS.length)}</span></div>
-  </div></div><div class="foil" aria-hidden="true"></div>${variant === "doree" ? sparklesHTML() : ""}`;
+    <div class="numbering"><span>${card.fams ? esc(card.fams) : "23-151"}</span><span>${card.horsSerie ? "Hors-série" : pad(card.num || card.id) + " / " + pad(CARDS.length)}</span></div>
+  </div></div><div class="foil" aria-hidden="true"></div>${variant === "doree" || variant === "maitre" ? sparklesHTML() : ""}${variant === "maitre" ? `<div class="maitre-tag">Maître</div>` : ""}`;
   if (pauseIO && variant !== "normale") pauseIO.observe(el);
   return el;
 }
