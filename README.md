@@ -1,5 +1,7 @@
 # Collec' 23-151
 
+> Pour reprendre le travail sur ce dépôt : lire d'abord **PROJET.md** (organisation, règles, mises à jour SQL, jeux).
+
 Collection de cartes de la fam's 23-151 (Bordel's), pour le week's fam's.
 
 - `index.html` : l'appli des joueurs (inscription par pseudo et code, boosters, album, classement).
