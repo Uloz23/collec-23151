@@ -103,6 +103,9 @@ td.num { font-variant-numeric: tabular-nums; }
 #tab-players input[type=checkbox]:checked::after { opacity: 1; }
 #tab-players input[type=checkbox]:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 #tab-players input[type=checkbox]:disabled { opacity: .3; cursor: not-allowed; }
+.gp-tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+.gp-off { background: rgba(255,210,122,.2); color: #ffd27a; }
+.gp-luck { background: rgba(143,240,196,.15); color: #8ff0c4; }
 .ctile .pick { position: absolute; top: 10px; left: 10px; width: 22px; height: 22px; accent-color: #c9a24e; z-index: 2; }
 .dots { display: flex; gap: 4px; }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(241,223,174,.15); }
@@ -562,10 +565,28 @@ async function loadStats2() {
     ${hours.length ? `<div class="st-bars">${hours.map(h => `<div class="st-bar" title="${new Date(h.h).toLocaleString("fr-FR")} : ${h.boosters} boosters"><small>${h.boosters}</small><i style="height:${Math.round(h.boosters / max * 80)}%"></i><small>${hh(h.h)}</small></div>`).join("")}</div>` : `<p class="muted">Aucun booster pour l'instant.</p>`}
     <h3 class="st-h">Dernières dorées et full art</h3>
     ${(d.belles_cartes || []).length ? `<ul class="st-list">${d.belles_cartes.map(b => `<li><span class="st-name">${esc(b.pseudo)}</span> : <span class="st-name">${esc(b.carte)}</span> en ${VL[b.variante] ? VL[b.variante].toLowerCase().replace(/s$/, "") : b.variante} <span class="muted">· ${when(b.quand)}</span></li>`).join("")}</ul>` : `<p class="muted">Aucune pour l'instant.</p>`}
+    <h3 class="st-h">God packs</h3>
+    <div id="st2-god"><p class="muted">Chargement…</p></div>
     <h3 class="st-h">Cartes les plus tirées</h3>
     <ul class="st-list">${(d.cartes_populaires || []).map(c => `<li><span class="st-name">${esc(c.carte)}</span> <span class="muted">× ${c.n}</span></li>`).join("") || "<li class='muted'>—</li>"}</ul>
     <h3 class="st-h">Jamais tirées (${(d.cartes_jamais_tirees || []).length})</h3>
     <p>${(d.cartes_jamais_tirees || []).map(c => `<span class="st-name">${esc(c)}</span>`).join(" · ") || "<span class='muted'>Toutes les cartes sont sorties au moins une fois.</span>"}</p>`;
+  loadGodPacks();
+}
+// God packs : qui, quand, offert ou par chance, et ce qu'il y avait dedans
+async function loadGodPacks() {
+  const box = $("st2-god"); if (!box) return;
+  const { data, error } = await SB.rpc("admin_god_packs");
+  if (error) { box.innerHTML = `<p class="muted">${/admin_god_packs/.test(error.message) ? "Installe la mise à jour n° 27 pour voir le détail des god packs." : "Erreur : " + esc(error.message)}</p>`; return; }
+  if (!data.length) { box.innerHTML = `<p class="muted">Aucun god pack pour l'instant.</p>`; return; }
+  const VI = { doree: "★ dorée", textless: "FA", brillante: "✦", normale: "" };
+  const OR = { offert: `<span class="gp-tag gp-off">offert</span>`, hasard: `<span class="gp-tag gp-luck">chance</span>` };
+  box.innerHTML = `<div class="scroll"><table><thead><tr><th>Quand</th><th>Joueur</th><th>Origine</th><th>Contenu</th></tr></thead><tbody>${data.map(g => `<tr>
+    <td class="muted" style="white-space:nowrap">${new Date(g.quand).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+    <td class="st-name">${esc(g.pseudo)}</td>
+    <td>${OR[g.origine] || `<span class="muted">—</span>`}${g.message ? `<div class="muted" style="font-size:13px">« ${esc(g.message)} »</div>` : ""}</td>
+    <td style="font-size:14px">${(g.cartes || []).map(c => `${esc(c.carte)} <span class="muted">${VI[c.version] || c.version}</span>`).join(" · ")}</td></tr>`).join("")}</tbody></table></div>
+    <p class="muted" style="font-size:13px">« — » : god pack ouvert avant la mise à jour n° 27 (origine inconnue).</p>`;
 }
 $("st2-refresh").onclick = loadStats2;
 

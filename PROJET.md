@@ -115,8 +115,9 @@ Elle résume l'organisation, les règles décidées avec Mathieu et la façon de
 | 24 | maj-24-remise-a-zero-jeu | Remise à zéro d'un jeu |
 | 25 | maj-25-recompenses-monome-hero | Récompenses, chant de la semaine, version Maître, hors-série |
 | 26 | maj-26-rangs-jeux | Rang dans la fam's par piste |
+| 27 | maj-27-bilan-god-packs | Bilan des god packs (admin, Stats) |
 
-La prochaine mise à jour sera la **n° 27**.
+La prochaine mise à jour sera la **n° 28**.
 
 ## Tester
 
